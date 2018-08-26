@@ -163,7 +163,7 @@ std::vector<Face> getFaces(voro::voronoicell& cell)
 	return faces;
 }
 
-std::vector<Face> getFacesFromEdges(voro::voronoicell& cell)
+std::vector<Face> getFacesFromEdges(voro::voronoicell& cell, const glm::vec3& particlePos)
 {
 	std::vector<int> vertexOrders;
 	cell.vertex_orders(vertexOrders);
@@ -240,11 +240,11 @@ std::vector<Face> getFacesFromEdges(voro::voronoicell& cell)
 		Face face;
 		for (const int vert : faceSet)
 		{
-			face.vertices.push_back(vertToPoint(vert));
+			face.vertices.push_back(vertToPoint(vert)+particlePos);
 		}
 
 		auto normal = face.getNormal();
-		if(glm::dot(normal, centerPoint - face.vertices[0]) > 0)
+		if(glm::dot(normal, centerPoint - (face.vertices[0]-particlePos)) > 0)
 		{
 			normal = -normal; //make normal face outward
 		}
@@ -259,8 +259,6 @@ std::vector<Face> getFacesFromEdges(voro::voronoicell& cell)
 ci::TriMesh meshFromFaces(const std::vector<Face>& faces)
 {
 	cinder::TriMesh mesh;
-
-
 
 	for(const Face& face :faces)
 	{

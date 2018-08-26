@@ -30,6 +30,6 @@ struct Face
 std::vector<Face> getFaces(voro::voronoicell& cell);
 
 /// Get all faces of a voronoi cell using the cells'edges (this avoids broken face data of voro++)
-std::vector<Face> getFacesFromEdges(voro::voronoicell& cell);
+std::vector<Face> getFacesFromEdges(voro::voronoicell& cell, const glm::vec3& particlePos);
 
 ci::TriMesh meshFromFaces(const std::vector<Face>& faces);

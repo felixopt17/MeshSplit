@@ -16,10 +16,10 @@ using namespace std;
 std::default_random_engine re;
 
 class MeshSplitApp : public App {
-  public:
-	  MeshSplitApp();
+public:
+	MeshSplitApp();
 	void setup() override;
-	void mouseDown( MouseEvent event ) override;
+	void mouseDown(MouseEvent event) override;
 	void update() override;
 	void draw() override;
 	void keyDown(KeyEvent event) override;
@@ -39,7 +39,7 @@ private:
 
 MeshSplitApp::MeshSplitApp() :con(-MAX_SIZE, MAX_SIZE, -MAX_SIZE, MAX_SIZE, -MAX_SIZE, MAX_SIZE, 1, 1, 1, false, false, false, 10)
 {
-	
+
 }
 
 
@@ -47,14 +47,15 @@ void MeshSplitApp::setup()
 {
 	mesh = geom::Teapot();
 
+	const auto scale = 6;
 	uniform_real_distribution<double> offsetDist(-0.5, 0.5);
 	int particleID = 0;
-	for(int x=-1; x<=1;x++)
-		for(int y=-1;y<=1;y++)
-			for (int z = -1; z <= 1; z++)
-		{
-				con.put(particleID++, x+offsetDist(re), y + offsetDist(re), z + offsetDist(re));
-		}
+	for (int x = -scale; x <= scale; x++)
+		for (int y = -scale; y <= scale; y++)
+			for (int z = -scale; z <= scale; z++)
+			{
+				con.put(particleID++, (x + offsetDist(re)) / scale, (y + offsetDist(re)) / scale, (z + offsetDist(re)) / scale);
+			}
 
 	con.compute_all_cells();
 
@@ -65,9 +66,12 @@ void MeshSplitApp::setup()
 	{
 		voro::voronoicell vcell;
 
-		if(con.compute_cell(vcell, vLoop))
+		if (con.compute_cell(vcell, vLoop))
 		{
-			cells.emplace_back(getFacesFromEdges(vcell));
+			double px, py, pz;
+			vLoop.pos(px, py, pz);
+
+			cells.emplace_back(getFacesFromEdges(vcell, glm::vec3(px,py,pz)));
 		}
 
 	} while (vLoop.inc());
@@ -75,7 +79,7 @@ void MeshSplitApp::setup()
 
 }
 
-void MeshSplitApp::mouseDown( MouseEvent event )
+void MeshSplitApp::mouseDown(MouseEvent event)
 {
 }
 
@@ -102,12 +106,11 @@ void MeshSplitApp::draw()
 	shader->bind();
 
 	gl::lineWidth(3);
-	gl::color(ColorA(1.0f, 0.0f, 0.0f, 0.5f));
 
 	//gl::drawSphere(vec3(), 1.0f, 40);
 
 	gl::pushModelMatrix();
-	gl::rotate(3.1415f*2.f*getElapsedSeconds() / 8, vec3(0,1,0));
+	gl::rotate(3.1415f*2.f*getElapsedSeconds() / 8, vec3(0, 1, 0));
 	gl::draw(mesh);
 
 	gl::popModelMatrix();
@@ -116,7 +119,7 @@ void MeshSplitApp::draw()
 
 void MeshSplitApp::keyDown(KeyEvent event)
 {
-	if(event.getChar()=='+')
+	if (event.getChar() == '+')
 	{
 		currentCell++;
 		mesh = meshFromFaces(cells[currentCell%cells.size()]);
@@ -125,4 +128,4 @@ void MeshSplitApp::keyDown(KeyEvent event)
 
 
 
-CINDER_APP( MeshSplitApp, RendererGl )
+CINDER_APP(MeshSplitApp, RendererGl)
