@@ -12,6 +12,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
+    <Filter Include="Source Files\voro++">
+      <UniqueIdentifier>{fbfaa387-475b-4b73-ba5e-2aa4ba85359b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\voro++">
+      <UniqueIdentifier>{a0366581-9a8b-49c4-bf34-de6dbf74fb1b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\MeshSplitApp.cpp">
@@ -23,9 +29,99 @@
     <ClInclude Include="..\include\Resources.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClCompile Include="..\src\voro++-0.4.6\src\c_loops.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\voro++-0.4.6\src\cell.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\voro++-0.4.6\src\cmd_line.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\voro++-0.4.6\src\common.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\voro++-0.4.6\src\container.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\voro++-0.4.6\src\container_prd.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\voro++-0.4.6\src\pre_container.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\voro++-0.4.6\src\unitcell.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\voro++-0.4.6\src\v_base.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\voro++-0.4.6\src\v_compute.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\voro++-0.4.6\src\voro++.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\voro++-0.4.6\src\wall.cc">
+      <Filter>Source Files\voro++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\vorohelpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\meshsplitter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\Resources.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\c_loops.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\cell.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\common.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\config.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\container.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\container_prd.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\pre_container.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\rad_option.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\v_base.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\v_compute.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\voro++.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\wall.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\worklist.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\voro++-0.4.6\src\unitcell.hh">
+      <Filter>Header Files\voro++</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\vorohelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\meshsplitter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
