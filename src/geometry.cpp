@@ -1,6 +1,8 @@
 #include "geometry.h"
 
 
+
+
 LineSegment LineSegment::intersect(const LineSegment& other) const
 {
 	assert(fVecEquals(line.origin, other.line.origin));
@@ -9,11 +11,13 @@ LineSegment LineSegment::intersect(const LineSegment& other) const
 	return LineSegment(line, std::max(a, other.a), std::min(b, other.b));
 }
 
+const float Plane::THICKNESS(std::numeric_limits<float>::epsilon()*EPSILON_SCALE);
+
 Plane::Plane(const struct Triangle& tri) :Plane(tri.a, tri.b, tri.c) {}
 Plane::Plane(const struct Face& face)
 {
 	assert(face.vertices.size() >= 3);
-	if (face.vertices.size() <= 3)
+	if (face.vertices.size() < 3)
 	{
 		std::cerr << "Too few vertices in a face to make a plane! (" << face.vertices.size() << ")""\n";
 		exit(1);
@@ -46,13 +50,15 @@ PlaneIntersectionResult Plane::intersect(const Plane& other) const
 
 LineSegment cutSegmentByFaceEdges(const LineSegment& originalSegment, const Face& face)
 {
-	if (originalSegment.getLength() == 0)
+	if (glm::epsilonEqual(originalSegment.getLength(), 0.f, glm::epsilon<float>()*EPSILON_SCALE))
 		return originalSegment;
 
 	const Plane facePlane(face);
 	assert(face.vertices.size() >= 3);
-	assert(glm::epsilonEqual(glm::dot(originalSegment.line.direction, facePlane.normal), 0.f, EPSILON_SCALE*glm::epsilon<float>())); //are perpendicular
-	assert(glm::epsilonEqual(glm::dot(originalSegment.line.origin, facePlane.normal), facePlane.scale, EPSILON_SCALE*glm::epsilon<float>())); //is point on plane
+	const auto projectionToNormal = glm::dot(originalSegment.line.direction, facePlane.normal);
+	assert(glm::epsilonEqual(projectionToNormal, 0.f, EPSILON_SCALE*glm::epsilon<float>())); //are perpendicular
+	const auto distanceFormPlane = facePlane.pointDistance(originalSegment.line.origin);
+	//assert(glm::epsilonEqual(distanceFormPlane, 0.f, EPSILON_SCALE*glm::epsilon<float>())); //is point on plane
 
 	/**
 	 * 1) Project line to the face

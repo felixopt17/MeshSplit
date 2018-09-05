@@ -59,7 +59,9 @@ private:
 	static const int KINDA_BIG_NUMBER = 10000; 
 };
 
-
+/**
+ * 3D Plane with thickness to avoid floating point issues
+ */
 struct Plane
 {
 	Plane(const glm::vec3& point, const glm::vec3& normal) : normal(glm::normalize(normal)), scale(glm::dot(point, normal)) {}
@@ -72,18 +74,20 @@ struct Plane
 	/// Calculate intersection with other plane
 	struct PlaneIntersectionResult intersect(const Plane& other) const;
 
+	/// Is point in front or inside the thick plane
 	bool isInFront(const glm::vec3& point) const
 	{
-		return glm::dot(normal, point) >= scale;
+		return glm::dot(normal, point) >= scale-THICKNESS;
 	}
 
-	double pointDistance(const glm::vec3& point) const
+	float pointDistance(const glm::vec3& point) const
 	{
 		return glm::abs(glm::dot(normal, point) - scale);
 	}
 
 	glm::vec3 normal;
 	float scale;
+	static const float THICKNESS;
 };
 
 struct PlaneIntersectionResult

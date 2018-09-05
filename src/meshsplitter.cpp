@@ -2,8 +2,20 @@
 #include "meshsplitter.h"
 #include "glm/gtc/epsilon.hpp"
 
+#ifndef _TEST_
+#include <cinder/app/AppBase.h>
+#endif
+
+
 using std::vector;
 using ci::TriMesh;
+
+void setTitleMessage(const std::string& str)
+{
+#ifndef _TEST_
+	cinder::app::getWindow()->setTitle("Splitting with cell " + std::to_string(vLoop.pid()) + "/" + std::to_string(con.total_particles()));
+#endif
+}
 
 
 vector<TriMesh> splitMesh(const TriMesh& sourceMesh, voro::container& con)
@@ -15,14 +27,19 @@ vector<TriMesh> splitMesh(const TriMesh& sourceMesh, voro::container& con)
 	vLoop.start();
 	do
 	{
+		setTitleMessage("Splitting with cell " + std::to_string(vLoop.pid()) + "/" + std::to_string(con.total_particles()));
+
 		voro::voronoicell vcell;
+		double px, py, pz;
+		vLoop.pos(px, py, pz);
+		glm::vec3 particlePos(px, py, pz);
 
 		if (con.compute_cell(vcell, vLoop))
 		{
-			if (cellIntersectsMesh(sourceMesh, vcell))
+			if (cellIntersectsMesh(sourceMesh, vcell, particlePos))
 			{
 				TriMesh intersectionMesh;
-				if (intersectMesh(sourceMesh, vcell, intersectionMesh))
+				if (intersectMesh(sourceMesh, vcell, particlePos, intersectionMesh))
 				{
 					result.emplace_back(std::move(intersectionMesh));
 				}
@@ -31,28 +48,32 @@ vector<TriMesh> splitMesh(const TriMesh& sourceMesh, voro::container& con)
 
 	} while (vLoop.inc());
 
+	setTitleMessage("Splitting complete");
 	return result;
 }
 
-cinder::AxisAlignedBox calculateCellBounds(voro::voronoicell& cell)
+cinder::AxisAlignedBox calculateCellBounds(voro::voronoicell& cell, const glm::vec3& particlePos)
 {
 	using glm::vec3;
 
 	vec3 min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
 	vec3 max(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest());
-	auto faces = getFaces(cell);
-	for (const auto& face : faces)
-	{
-		for (const auto& pos : face.vertices)
-		{
-			min.x = glm::min(pos.x, min.x);
-			min.y = glm::min(pos.y, min.y);
-			min.z = glm::min(pos.z, min.z);
 
-			max.x = glm::max(pos.x, max.x);
-			max.y = glm::max(pos.y, max.y);
-			max.z = glm::max(pos.z, max.z);
-		}
+	std::vector<double> vertPositions;
+	cell.vertices(particlePos.x, particlePos.y, particlePos.z, vertPositions);
+
+	for (int i = 0; i < cell.p; i++)
+	{
+		const glm::vec3 pos(vertPositions[3 * i], vertPositions[3 * i + 1], vertPositions[3 * i + 2]);
+
+		min.x = glm::min(pos.x, min.x);
+		min.y = glm::min(pos.y, min.y);
+		min.z = glm::min(pos.z, min.z);
+
+		max.x = glm::max(pos.x, max.x);
+		max.y = glm::max(pos.y, max.y);
+		max.z = glm::max(pos.z, max.z);
+
 	}
 
 	return cinder::AxisAlignedBox(min, max);
@@ -60,10 +81,10 @@ cinder::AxisAlignedBox calculateCellBounds(voro::voronoicell& cell)
 
 
 
-bool cellIntersectsMesh(const TriMesh& mesh, voro::voronoicell& cell)
+bool cellIntersectsMesh(const TriMesh& mesh, voro::voronoicell& cell, const glm::vec3& particlePos)
 {
 	auto bounds = mesh.calcBoundingBox();
-	auto cellBounds = calculateCellBounds(cell);
+	const auto cellBounds = calculateCellBounds(cell, particlePos);
 
 	return bounds.intersects(cellBounds);
 }
@@ -82,7 +103,7 @@ std::vector<Triangle> getTriangles(const TriMesh& mesh)
 	return triangles;
 }
 
-bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, TriMesh& outMesh)
+bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, const glm::vec3& particlePos, TriMesh& outMesh)
 {
 	/*
 	 * Intersect all triangles in source mesh with the cell
@@ -91,11 +112,11 @@ bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, TriMesh& outM
 
 	auto triangles = getTriangles(source);
 
-	auto faces = getFaces(cell);
-	for(const auto& face: faces)
+	auto faces = getFacesFromEdges(cell, particlePos);
+	for (const auto& face : faces)
 	{
 		std::vector<Triangle> newTriangles;
-		for(const Triangle& tri: triangles)
+		for (const Triangle& tri : triangles)
 		{
 			auto splitResult = cutTriangleByFace(tri, face);
 			newTriangles.insert(std::end(newTriangles), std::begin(splitResult), std::end(splitResult));
@@ -105,14 +126,14 @@ bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, TriMesh& outM
 	}
 
 	// Add resulting triangles to mesh
-	for(const Triangle& tri: triangles)
+	for (const Triangle& tri : triangles)
 	{
 		const auto vCount = static_cast<uint32_t>(outMesh.getNumVertices());
 
 		outMesh.appendPosition(tri.a);
 		outMesh.appendPosition(tri.b);
 		outMesh.appendPosition(tri.c);
-	
+
 		outMesh.appendTriangle(vCount, vCount + 1, vCount + 2);
 	}
 
@@ -128,25 +149,26 @@ std::vector<Triangle> cutTriangleByFace(const Triangle& triangle, const Face& fa
 	const Plane facePlane(face);
 
 	// Triangles that are fully in front of the plane are kept unchanged
-	if(facePlane.isInFront(triangle.a) && facePlane.isInFront(triangle.b) && facePlane.isInFront(triangle.c))
+	if (facePlane.isInFront(triangle.a) && facePlane.isInFront(triangle.b) && facePlane.isInFront(triangle.c))
 	{
 		return { triangle };
 	}
 
 	// Find new triangles from intersection
 	const auto intersection = triPlane.intersect(facePlane);
-	if(intersection.isLine)
+	if (intersection.isLine)
 	{
 		// Limit the intersection to the faces
 		const auto faceSegment = cutSegmentByFaceEdges(LineSegment(intersection.line), face);
 		const auto commonSegment = cutSegmentByFaceEdges(faceSegment, Face(triangle));
 
-		if(commonSegment.getLength()>0)
+		if (commonSegment.getLength() > 0)
 		{
-			//Split triangle
-			//TODO
-
 			return splitTriangleBySegment(triangle, commonSegment, facePlane);
+		}
+		else
+		{
+			return {};
 		}
 	}
 
@@ -172,7 +194,7 @@ std::vector<Triangle> splitTriangleBySegment(const Triangle& triangle, const Lin
 
 	assert(!verticesToKeep.empty());
 
-	if(verticesToKeep.size()==1)
+	if (verticesToKeep.size() == 1)
 	{
 		Triangle result(verticesToKeep[0], segment.getStart(), segment.getEnd());
 

@@ -9,18 +9,20 @@
 using std::vector;
 using ci::TriMesh;
 
+void setTitleMessage(const std::string& str);
+
 
 vector<TriMesh> splitMesh(const TriMesh& sourceMesh, voro::container& container);
 
 /**
  * Broad test for mesh - cell intersection
  */
-bool cellIntersectsMesh(const TriMesh& mesh, voro::voronoicell& cell);
+bool cellIntersectsMesh(const TriMesh& mesh, voro::voronoicell& cell, const glm::vec3& particlePos);
 
 /**
  * Calculate intersection of a source mesh and a voronoi cell as a new mesh
  */
-bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, TriMesh& outMesh);
+bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, const glm::vec3& particlePos, TriMesh& outMesh);
 
 
 /**

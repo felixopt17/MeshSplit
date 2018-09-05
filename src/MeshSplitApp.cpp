@@ -7,6 +7,9 @@
 #include "voro++.hh"
 #include "vorohelpers.h"
 #include <random>
+#include "meshsplitter.h"
+
+#ifndef _TEST_
 
 
 using namespace ci;
@@ -18,6 +21,7 @@ std::default_random_engine re;
 class MeshSplitApp : public App {
 public:
 	MeshSplitApp();
+	void generateVoronoiCells();
 	void setup() override;
 	void mouseDown(MouseEvent event) override;
 	void update() override;
@@ -28,10 +32,11 @@ private:
 	TriMesh mesh;
 	voro::container con;
 
-	std::vector<std::vector<Face>> cells;
+	//std::vector<std::vector<Face>> cells;
+	std::vector<TriMesh> meshParts;
 	static const int MAX_SIZE = 5;
 
-	int currentCell = 0;
+	int currentPart = 0;
 
 private:
 
@@ -43,9 +48,9 @@ MeshSplitApp::MeshSplitApp() :con(-MAX_SIZE, MAX_SIZE, -MAX_SIZE, MAX_SIZE, -MAX
 }
 
 
-void MeshSplitApp::setup()
+void MeshSplitApp::generateVoronoiCells()
 {
-	mesh = geom::Teapot();
+	getWindow()->setTitle("Generating voronoi cells");
 
 	const auto scale = 6;
 	uniform_real_distribution<double> offsetDist(-0.5, 0.5);
@@ -59,24 +64,37 @@ void MeshSplitApp::setup()
 
 	con.compute_all_cells();
 
-	// Loop over all particles and save computed voronoi cells
+	getWindow()->setTitle("Voronoi cells generated");
+
+	/*// Loop over all particles and save computed voronoi cells
 	voro::c_loop_all vLoop(con);
 	vLoop.start();
 	do
 	{
+		getWindow()->setTitle("Generating cell faces " + to_string(vLoop.pid())+"/"+to_string(con.total_particles()));
 		voro::voronoicell vcell;
 
 		if (con.compute_cell(vcell, vLoop))
 		{
 			double px, py, pz;
 			vLoop.pos(px, py, pz);
+			glm::vec3 particlePos(px, py, pz);
 
-			cells.emplace_back(getFacesFromEdges(vcell, glm::vec3(px,py,pz)));
+			cells.emplace_back(getFacesFromEdges(vcell, particlePos));
 		}
 
 	} while (vLoop.inc());
 
+	getWindow()->setTitle("Cell faces generated");*/
+}
 
+void MeshSplitApp::setup()
+{
+	mesh = geom::Teapot();
+
+	generateVoronoiCells();
+
+	meshParts = splitMesh(mesh, con);
 }
 
 void MeshSplitApp::mouseDown(MouseEvent event)
@@ -121,11 +139,14 @@ void MeshSplitApp::keyDown(KeyEvent event)
 {
 	if (event.getChar() == '+')
 	{
-		currentCell++;
-		mesh = meshFromFaces(cells[currentCell%cells.size()]);
+		currentPart++;
+		if(!meshParts.empty())
+			mesh = meshParts[currentPart%meshParts.size()];
 	}
 }
 
 
 
 CINDER_APP(MeshSplitApp, RendererGl)
+
+#endif

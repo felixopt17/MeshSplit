@@ -18,6 +18,9 @@
     <Filter Include="Header Files\voro++">
       <UniqueIdentifier>{a0366581-9a8b-49c4-bf34-de6dbf74fb1b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Tests">
+      <UniqueIdentifier>{2592bb2b-2ce9-4833-ae82-6491e39a6da0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\MeshSplitApp.cpp">
@@ -71,6 +74,12 @@
     <ClCompile Include="..\src\meshsplitter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\geometry.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\test_geometry.cpp">
+      <Filter>Source Files\Tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\Resources.h">
@@ -122,6 +131,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\meshsplitter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\geometry.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

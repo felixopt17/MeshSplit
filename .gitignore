@@ -10,3 +10,7 @@
 /src/voro++-0.4.6/html
 /src/voro++-0.4.6/examples
 /src/voro++-0.4.6
+/vc2013/TestResults
+/vc2013/x64
+/vc2013/.vs/MeshSplit/v15/ipch
+/vc2013/packages/Microsoft.googletest.v140.windesktop.msvcstl.static.rt-dyn.1.8.0
