@@ -166,6 +166,20 @@ TEST(PlaneTest, PlaneIntersectionLineBasic2)
 	ASSERT_TRUE(lineEquals(correctIntersection, intersection.line));
 }
 
+TEST(PlaneTest, PointInFrontBasic)
+{
+	const vec3 planeOrigin(3.f, 5.f, -4.f);
+	const Plane horizontalPlane(planeOrigin, glm::vec3(0.f, 1.f, 0.f));
+
+	const glm::vec3 a(0.f, 0.f, 0.f);
+	ASSERT_FALSE(horizontalPlane.isInFrontStrict(a)); //Point below
+
+	const glm::vec3 b(1.f, 5.5f, -4.f);
+	ASSERT_TRUE(horizontalPlane.isInFrontStrict(b)); //Point above
+
+	ASSERT_TRUE(horizontalPlane.isInFrontStrict(planeOrigin)); //Point in plane
+}
+
 #include <windows.h>
 #include <WinBase.h>
 #include <shellapi.h>

@@ -149,7 +149,7 @@ std::vector<Triangle> cutTriangleByFace(const Triangle& triangle, const Face& fa
 	const Plane facePlane(face);
 
 	// Triangles that are fully in front of the plane are kept unchanged
-	if (facePlane.isInFront(triangle.a) && facePlane.isInFront(triangle.b) && facePlane.isInFront(triangle.c))
+	if (facePlane.isInFrontStrict(triangle.a) && facePlane.isInFrontStrict(triangle.b) && facePlane.isInFrontStrict(triangle.c))
 	{
 		return { triangle };
 	}
@@ -188,9 +188,9 @@ glm::vec3 getClosest(const glm::vec3& source, const glm::vec3& a, const::glm::ve
 std::vector<Triangle> splitTriangleBySegment(const Triangle& triangle, const LineSegment& segment, const Plane& halfspace)
 {
 	std::vector<glm::vec3> verticesToKeep;
-	if (halfspace.isInFront(triangle.a)) verticesToKeep.push_back(triangle.a);
-	if (halfspace.isInFront(triangle.b)) verticesToKeep.push_back(triangle.b);
-	if (halfspace.isInFront(triangle.c)) verticesToKeep.push_back(triangle.c);
+	if (halfspace.isInFrontStrict(triangle.a)) verticesToKeep.push_back(triangle.a);
+	if (halfspace.isInFrontStrict(triangle.b)) verticesToKeep.push_back(triangle.b);
+	if (halfspace.isInFrontStrict(triangle.c)) verticesToKeep.push_back(triangle.c);
 
 	assert(!verticesToKeep.empty());
 

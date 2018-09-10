@@ -60,7 +60,7 @@ private:
 };
 
 /**
- * 3D Plane with thickness to avoid floating point issues
+ * Plane in 3D space
  */
 struct Plane
 {
@@ -74,10 +74,15 @@ struct Plane
 	/// Calculate intersection with other plane
 	struct PlaneIntersectionResult intersect(const Plane& other) const;
 
-	/// Is point in front or inside the thick plane
-	bool isInFront(const glm::vec3& point) const
+	/// Is point in front of the plane (does not use thickness)
+	bool isInFrontStrict(const glm::vec3& point) const
 	{
-		return glm::dot(normal, point) >= scale-THICKNESS;
+		return glm::dot(normal, point) >= scale;
+	}
+
+	bool isInside(const glm::vec3& point) const
+	{
+		return pointDistance(point) < THICKNESS;
 	}
 
 	float pointDistance(const glm::vec3& point) const

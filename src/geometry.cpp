@@ -109,5 +109,5 @@ LineSegment cutSegmentByFaceEdges(const LineSegment& originalSegment, const Face
 
 bool isPointInFront(const Plane& plane, const glm::vec3& point)
 {
-	return plane.isInFront(point);
+	return plane.isInFrontStrict(point);
 }
