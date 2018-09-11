@@ -176,9 +176,9 @@ std::vector<Face> getFacesFromEdges(voro::voronoicell& cell, const glm::vec3& pa
 		}
 
 		auto normal = face.getNormal();
-		if(glm::dot(normal, centerPoint - (face.vertices[0]-particlePos)) > 0)
+		if(glm::dot(normal, centerPoint - (face.vertices[0]-particlePos)) < 0)
 		{
-			normal = -normal; //make normal face outward
+			normal = -normal; //make normal face inward
 		}
 
 		face.orient(normal);

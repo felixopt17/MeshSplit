@@ -42,6 +42,7 @@ vector<TriMesh> splitMesh(const TriMesh& sourceMesh, voro::container& con)
 				TriMesh intersectionMesh;
 				if (intersectMesh(sourceMesh, vcell, particlePos, intersectionMesh))
 				{
+					intersectionMesh.recalculateNormals();
 					result.emplace_back(std::move(intersectionMesh));
 				}
 			}

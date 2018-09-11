@@ -94,10 +94,8 @@ void MeshSplitApp::setup()
 
 	generateVoronoiCells();
 
-	
-
-	//meshParts = splitMesh(mesh, con);
-	meshParts = testSplit(mesh);
+	meshParts = splitMesh(mesh, con);
+	//meshParts = testSplit(mesh);
 }
 
 void MeshSplitApp::mouseDown(MouseEvent event)
