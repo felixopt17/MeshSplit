@@ -52,7 +52,7 @@ void MeshSplitApp::generateVoronoiCells()
 {
 	getWindow()->setTitle("Generating voronoi cells");
 
-	const auto scale = 6;
+	const auto scale = 2;
 	uniform_real_distribution<double> offsetDist(-0.5, 0.5);
 	int particleID = 0;
 	for (int x = -scale; x <= scale; x++)
@@ -94,7 +94,10 @@ void MeshSplitApp::setup()
 
 	generateVoronoiCells();
 
-	meshParts = splitMesh(mesh, con);
+	
+
+	//meshParts = splitMesh(mesh, con);
+	meshParts = testSplit(mesh);
 }
 
 void MeshSplitApp::mouseDown(MouseEvent event)
@@ -113,7 +116,8 @@ void MeshSplitApp::draw()
 {
 	gl::enableDepth(true);
 	gl::clear(Color(0.5, 0.5, 0.5));
-	gl::enableFaceCulling(false);
+	gl::enableFaceCulling(true);
+	
 
 	CameraPersp cam;
 	cam.lookAt(vec3(3, 3, 3), vec3(0));
@@ -123,11 +127,12 @@ void MeshSplitApp::draw()
 	const auto shader = gl::getStockShader(lambert);
 	shader->bind();
 
-	gl::lineWidth(3);
+	gl::lineWidth(1);
 
 	//gl::drawSphere(vec3(), 1.0f, 40);
 
 	gl::pushModelMatrix();
+	gl::scale(2, 2, 2);
 	gl::rotate(3.1415f*2.f*getElapsedSeconds() / 8, vec3(0, 1, 0));
 	gl::draw(mesh);
 
@@ -142,6 +147,17 @@ void MeshSplitApp::keyDown(KeyEvent event)
 		currentPart++;
 		if(!meshParts.empty())
 			mesh = meshParts[currentPart%meshParts.size()];
+	}
+
+	if(event.getChar() =='w')
+	{
+		static bool wireframe;
+		if (wireframe)
+			gl::enableWireframe();
+		else
+			gl::disableWireframe();
+
+		wireframe = !wireframe;
 	}
 }
 

@@ -112,6 +112,36 @@ TEST(LineSegmentTest, IntersectPreservesInterval)
 	ASSERT_FLOAT_EQ(intersection.b, 6.f);
 }
 
+TEST(LineSegmentTest, IntersectPlaneStraight)
+{
+	const Plane horizontalPlane(glm::vec3(0.f, 5.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+	const Line line(vec3(0.f, 10.f, 0.f), vec3(0.f, 1.f, 0.f));
+	const Line reverseLine(vec3(0.f, 10.f, 0.f), vec3(0.f, -1.f, 0.f));
+	const LineSegment segment(line, -10.f, 10.f);
+	const LineSegment reverseSegment(reverseLine, -10.f, 10.f);
+
+	// Test segment starting behind the plane
+	auto cutSegment = segment.cut(horizontalPlane);
+	assertVec(cutSegment.getStart(), vec3(0.f, 5.0f, 0.f));
+	assertVec(cutSegment.getEnd(), vec3(0.f, 20.0f, 0.f));
+
+	// Test segment starting in front of the plane
+	auto cutSegmentReverse = reverseSegment.cut(horizontalPlane);
+	assertVec(cutSegmentReverse.getStart(), vec3(0.f, 20.0f, 0.f));
+	assertVec(cutSegmentReverse.getEnd(), vec3(0.f, 5.0f, 0.f));
+}
+
+TEST(LineSegmentTest, IntersectPlane)
+{
+	const Plane horizontalPlane(glm::vec3(0.f, 5.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+	const Line line(vec3(0.f, 0.f, 0.f), vec3(1.f, 1.f, 1.f));
+	const LineSegment segment(line, -10.f, 10.f);
+
+	auto cutSegment = segment.cut(horizontalPlane);
+	assertVec(cutSegment.getStart(), vec3(5.f, 5.0f, 5.f));
+	assertVec(cutSegment.getEnd(),segment.getEnd());
+}
+
 TEST(PlaneTest, PlaneConstructorEquality)
 {
 	const glm::vec3 a(0.f, 0.f, 0.f);
@@ -179,6 +209,63 @@ TEST(PlaneTest, PointInFrontBasic)
 
 	ASSERT_TRUE(horizontalPlane.isInFrontStrict(planeOrigin)); //Point in plane
 }
+
+TEST(TriangleTest, TrianglePlaneCutNoChange)
+{
+	const Triangle tri(vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, 1.f), vec3(1.f, 0.f, 0.f));
+	const Plane plane(vec3(2.f, 0.f, 0.f), vec3(-1.f, 0.f, 0.f));
+
+	auto cutResult = cutTriangleByPlane(tri, plane);
+	// Triangle should remain unchanged
+	ASSERT_TRUE(cutResult.size() == 1);
+	const auto& resultTri = cutResult[0];
+	assertVec(tri.a, resultTri.a);
+	assertVec(tri.b, resultTri.b);
+	assertVec(tri.c, resultTri.c);
+}
+
+TEST(TriangleTest, TrianglePlaneCutRemove)
+{
+	const Triangle tri(vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, 1.f), vec3(1.f, 0.f, 0.f));
+	const Plane plane(vec3(-2.f, 0.f, 0.f), vec3(-1.f, 0.f, 0.f));
+
+	auto cutResult = cutTriangleByPlane(tri, plane);
+	// Triangle should be completely removed
+	ASSERT_TRUE(cutResult.empty());
+}
+
+TEST(TriangleTest, TrianglePlaneCut1Vec)
+{
+	const Triangle tri(vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, 1.f), vec3(1.f, 0.f, 0.f));
+	const Plane plane(vec3(0.5f, 0.f, 0.f), vec3(-1.f, 0.f, 0.f));
+
+	auto cutResult = cutTriangleByPlane(tri, plane);
+	// Triangle should be partially clipped
+	ASSERT_TRUE(cutResult.size() == 1);
+	const auto& resultTri = cutResult[0];
+	assertVec(resultTri.a, vec3(0.f, 0.f, 0.f));
+	assertVec(resultTri.b, vec3(0.5f, 0.f, 0.5f));
+	assertVec(resultTri.c, vec3(0.5f, 0.f, 0.f));
+}
+
+TEST(TriangleTest, TrianglePlaneCut2Vec)
+{
+	const Triangle tri(vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, 1.f), vec3(1.f, 0.f, 0.f));
+	const Plane plane(vec3(0.5f, 0.f, 0.f), vec3(1.f, 0.f, 0.f));
+
+	auto cutResult = cutTriangleByPlane(tri, plane);
+	// Triangle should be partially clipped, resulting in two triangles
+	ASSERT_TRUE(cutResult.size() == 2);
+	assertVec(cutResult[0].a, vec3(1.f, 0.f, 1.f));
+	assertVec(cutResult[0].b, vec3(1.f, 0.f, 0.f));
+	assertVec(cutResult[0].c, vec3(0.5f, 0.f, 0.5f));
+
+	assertVec(cutResult[1].a, vec3(0.5f, 0.f, 0.f));
+	assertVec(cutResult[1].b, vec3(0.5f, 0.f, 0.5f));
+	assertVec(cutResult[1].c, vec3(1.f, 0.f, 0.f));
+}
+
+
 
 #include <windows.h>
 #include <WinBase.h>

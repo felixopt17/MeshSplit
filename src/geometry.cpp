@@ -1,6 +1,6 @@
 #include "geometry.h"
 
-
+using glm::vec3;
 
 
 LineSegment LineSegment::intersect(const LineSegment& other) const
@@ -9,6 +9,38 @@ LineSegment LineSegment::intersect(const LineSegment& other) const
 	assert(fVecEquals(line.direction, other.line.direction));
 
 	return LineSegment(line, std::max(a, other.a), std::min(b, other.b));
+}
+
+LineSegment LineSegment::cut(const Plane& plane) const
+{
+	// Line Segment - Plane intersection based on Real-Time Collision Detection by Christer Ericson
+	const auto ab = getEnd() - getStart();
+	auto t = (plane.scale - glm::dot(plane.normal, getStart())) / glm::dot(plane.normal, ab);
+
+	if(t>=0.f && t<=1.0f)
+	{
+		LineSegment result(*this);
+
+		// Keep the part in front
+		if (plane.isInFrontStrict(getStart()))
+		{
+			const auto distFromA = t * result.getLength();
+			result.b = result.a + distFromA;
+		}
+		else
+		{
+			const auto distFromB = (1 - t)*result.getLength();
+			result.a = result.b - distFromB;
+		}
+
+		return result;
+	}
+
+	if (plane.isInside(line.origin))
+		return LineSegment(*this);
+	else
+		return LineSegment(line, 0,0);
+
 }
 
 const float Plane::THICKNESS(std::numeric_limits<float>::epsilon()*EPSILON_SCALE);
@@ -110,4 +142,56 @@ LineSegment cutSegmentByFaceEdges(const LineSegment& originalSegment, const Face
 bool isPointInFront(const Plane& plane, const glm::vec3& point)
 {
 	return plane.isInFrontStrict(point);
+}
+
+
+std::vector<Triangle> cutTriangleByPlane(const Triangle& triangle, const Plane& plane)
+{
+	std::vector<vec3> pointsInFront;
+	std::vector<vec3> pointsInBack;
+	if (plane.isInFrontStrict(triangle.a)) pointsInFront.push_back(triangle.a); else pointsInBack.push_back(triangle.a);
+	if (plane.isInFrontStrict(triangle.b)) pointsInFront.push_back(triangle.b); else pointsInBack.push_back(triangle.b);
+	if (plane.isInFrontStrict(triangle.c)) pointsInFront.push_back(triangle.c); else pointsInBack.push_back(triangle.c);
+
+	if (pointsInFront.empty())
+		return {};
+
+	if (pointsInFront.size() == 3)
+		return { triangle };
+
+	if (pointsInFront.size() == 1)
+	{
+		// Create one triangle
+
+		// Cut sides of the triangle with the plane
+		auto aToB = LineSegment(pointsInFront[0], pointsInBack[0]).cut(plane);
+		auto aToC = LineSegment(pointsInFront[0], pointsInBack[1]).cut(plane);
+
+		Triangle result(pointsInFront[0], aToB.getEnd(), aToC.getEnd());
+
+		// Keep triangle pointing to the same direction
+		if (glm::dot(result.getNormal(), triangle.getNormal()) < 0)
+			result.changeWinding();
+
+		return { result };
+	}
+
+	assert(pointsInFront.size() == 2);
+	// Create two triangles
+
+	auto aToC = LineSegment(pointsInFront[0], pointsInBack[0]).cut(plane);
+	auto bToC = LineSegment(pointsInFront[1], pointsInBack[0]).cut(plane);
+
+	vec3 intersections[2] = { aToC.getEnd(), bToC.getEnd() };
+
+	Triangle result1(pointsInFront[0], pointsInFront[1], intersections[0]);
+	Triangle result2(pointsInFront[1], intersections[0], intersections[1]);
+
+	// Keep triangle pointing in the same direction
+	if (glm::dot(result1.getNormal(), triangle.getNormal()) < 0)
+		result1.changeWinding();
+	if (glm::dot(result2.getNormal(), triangle.getNormal()) < 0)
+		result2.changeWinding();
+
+	return { result1, result2 };
 }

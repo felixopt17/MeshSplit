@@ -9,11 +9,12 @@
 
 using std::vector;
 using ci::TriMesh;
+using glm::vec3;
 
 void setTitleMessage(const std::string& str)
 {
 #ifndef _TEST_
-	cinder::app::getWindow()->setTitle("Splitting with cell " + std::to_string(vLoop.pid()) + "/" + std::to_string(con.total_particles()));
+	cinder::app::getWindow()->setTitle(str);
 #endif
 }
 
@@ -103,6 +104,32 @@ std::vector<Triangle> getTriangles(const TriMesh& mesh)
 	return triangles;
 }
 
+std::vector<cinder::TriMesh> testSplit(const TriMesh& mesh)
+{
+	TriMesh outMesh;
+	Plane plane(vec3(0.0f, 0.3f, 0.f), vec3(1, 1, 0.2));
+	auto tris = getTriangles(mesh);
+	std::vector<Triangle> clippedTris;
+	for (auto& t : tris)
+	{
+		auto r = cutTriangleByPlane(t, plane);
+
+		for (const Triangle& tri : r)
+		{
+			const auto vCount = static_cast<uint32_t>(outMesh.getNumVertices());
+
+			outMesh.appendPosition(tri.a);
+			outMesh.appendPosition(tri.b);
+			outMesh.appendPosition(tri.c);
+
+			outMesh.appendTriangle(vCount, vCount + 1, vCount + 2);
+		}
+	}
+
+	outMesh.recalculateNormals();
+	return { outMesh };
+}
+
 bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, const glm::vec3& particlePos, TriMesh& outMesh)
 {
 	/*
@@ -116,9 +143,10 @@ bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, const glm::ve
 	for (const auto& face : faces)
 	{
 		std::vector<Triangle> newTriangles;
+		const Plane plane(face);
 		for (const Triangle& tri : triangles)
 		{
-			auto splitResult = cutTriangleByFace(tri, face);
+			auto splitResult = cutTriangleByPlane(tri, plane);
 			newTriangles.insert(std::end(newTriangles), std::begin(splitResult), std::end(splitResult));
 		}
 
@@ -137,7 +165,7 @@ bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, const glm::ve
 		outMesh.appendTriangle(vCount, vCount + 1, vCount + 2);
 	}
 
-	return true;
+	return !triangles.empty();
 }
 
 /**
@@ -175,6 +203,7 @@ std::vector<Triangle> cutTriangleByFace(const Triangle& triangle, const Face& fa
 	//TODO is not a line, is plane
 	return { triangle }; // bad temp "fix"
 }
+
 
 /// Get closest of two points
 glm::vec3 getClosest(const glm::vec3& source, const glm::vec3& a, const::glm::vec3& b)

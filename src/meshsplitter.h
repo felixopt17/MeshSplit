@@ -30,7 +30,13 @@ bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, const glm::ve
  */
 std::vector<Triangle> cutTriangleByFace(const Triangle& triangle, const Face& face);
 
+
 /**
  * Split triangle by a line segment inside the triangle. Return new triangles
  */
 std::vector<Triangle> splitTriangleBySegment(const Triangle&triangle, const LineSegment& segment,const Plane& halfspace);
+
+
+std::vector<Triangle> getTriangles(const TriMesh& mesh);
+
+std::vector<cinder::TriMesh> testSplit(const class TriMesh& mesh);

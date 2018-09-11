@@ -39,8 +39,10 @@ struct Line
 
 struct LineSegment
 {
-	LineSegment(const Line& line, float a=-KINDA_BIG_NUMBER, float b= KINDA_BIG_NUMBER):
+	LineSegment(const Line& line, float a = -KINDA_BIG_NUMBER, float b = KINDA_BIG_NUMBER) :
 	line(line), a(a), b(b) {}
+	LineSegment(const glm::vec3& from, const glm::vec3& to):line(from, (to-from)),
+	a(0), b(glm::length(to-from)){}
 
 	glm::vec3 getStart() const { return line.origin + a * line.direction; }
 	glm::vec3 getEnd() const { return line.origin + b * line.direction; }
@@ -48,6 +50,9 @@ struct LineSegment
 	float getLength() const { return std::max(b - a, 0.f); }
 
 	LineSegment intersect(const LineSegment& other) const;
+
+	/// Cut line segment by a plane, keeping the part of the segment in front of the plane
+	LineSegment cut(const struct Plane& plane) const;
 
 	const Line line;
 
@@ -132,3 +137,7 @@ LineSegment cutSegmentByFaceEdges(const LineSegment& segment, const Face& face);
 
 /// Is point in front of the plane (or inside)
 bool isPointInFront(const Plane& plane, const glm::vec3& point);
+
+
+/// Split triangle by a plane. Return part of the triangle in front of the plane
+std::vector<Triangle> cutTriangleByPlane(const Triangle& triangle, const Plane& plane);
