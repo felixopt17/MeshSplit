@@ -142,6 +142,16 @@ TEST(LineSegmentTest, IntersectPlane)
 	assertVec(cutSegment.getEnd(),segment.getEnd());
 }
 
+TEST(LineSegmentTest, IntersectPlaneRegression1)
+{
+	const Plane plane(vec3(-3.f, 0.f, 0.f), vec3(1.f, 0.f, 0.f));
+	const LineSegment segment(vec3(0.12f, 0.8f, 0.f), vec3(0.0f, 0.8f, 0.f));
+
+	auto cutSegment = segment.cut(plane);
+	assertVec(cutSegment.getStart(), segment.getStart());
+	assertVec(cutSegment.getEnd(), segment.getEnd());
+}
+
 TEST(PlaneTest, PlaneConstructorEquality)
 {
 	const glm::vec3 a(0.f, 0.f, 0.f);
@@ -196,6 +206,7 @@ TEST(PlaneTest, PlaneIntersectionLineBasic2)
 	ASSERT_TRUE(lineEquals(correctIntersection, intersection.line));
 }
 
+
 TEST(PlaneTest, PointInFrontBasic)
 {
 	const vec3 planeOrigin(3.f, 5.f, -4.f);
@@ -214,8 +225,8 @@ TEST(TriangleTest, TrianglePlaneCutNoChange)
 {
 	const Triangle tri(vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, 1.f), vec3(1.f, 0.f, 0.f));
 	const Plane plane(vec3(2.f, 0.f, 0.f), vec3(-1.f, 0.f, 0.f));
-
-	auto cutResult = cutTriangleByPlane(tri, plane);
+	std::vector<OrientedLineSegment> segments;
+	auto cutResult = cutTriangleByPlane(tri, plane, segments);
 	// Triangle should remain unchanged
 	ASSERT_TRUE(cutResult.size() == 1);
 	const auto& resultTri = cutResult[0];
@@ -228,8 +239,8 @@ TEST(TriangleTest, TrianglePlaneCutRemove)
 {
 	const Triangle tri(vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, 1.f), vec3(1.f, 0.f, 0.f));
 	const Plane plane(vec3(-2.f, 0.f, 0.f), vec3(-1.f, 0.f, 0.f));
-
-	auto cutResult = cutTriangleByPlane(tri, plane);
+	std::vector<OrientedLineSegment> segments;
+	auto cutResult = cutTriangleByPlane(tri, plane, segments);
 	// Triangle should be completely removed
 	ASSERT_TRUE(cutResult.empty());
 }
@@ -238,8 +249,8 @@ TEST(TriangleTest, TrianglePlaneCut1Vec)
 {
 	const Triangle tri(vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, 1.f), vec3(1.f, 0.f, 0.f));
 	const Plane plane(vec3(0.5f, 0.f, 0.f), vec3(-1.f, 0.f, 0.f));
-
-	auto cutResult = cutTriangleByPlane(tri, plane);
+	std::vector<OrientedLineSegment> segments;
+	auto cutResult = cutTriangleByPlane(tri, plane, segments);
 	// Triangle should be partially clipped
 	ASSERT_TRUE(cutResult.size() == 1);
 	const auto& resultTri = cutResult[0];
@@ -252,8 +263,9 @@ TEST(TriangleTest, TrianglePlaneCut2Vec)
 {
 	const Triangle tri(vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, 1.f), vec3(1.f, 0.f, 0.f));
 	const Plane plane(vec3(0.5f, 0.f, 0.f), vec3(1.f, 0.f, 0.f));
+	std::vector<OrientedLineSegment> segments;
 
-	auto cutResult = cutTriangleByPlane(tri, plane);
+	auto cutResult = cutTriangleByPlane(tri, plane, segments);
 	// Triangle should be partially clipped, resulting in two triangles
 	ASSERT_TRUE(cutResult.size() == 2);
 	assertVec(cutResult[0].a, vec3(1.f, 0.f, 1.f));
@@ -264,6 +276,7 @@ TEST(TriangleTest, TrianglePlaneCut2Vec)
 	assertVec(cutResult[1].b, vec3(0.5f, 0.f, 0.5f));
 	assertVec(cutResult[1].c, vec3(1.f, 0.f, 0.f));
 }
+
 
 
 

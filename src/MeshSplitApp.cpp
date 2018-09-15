@@ -94,8 +94,8 @@ void MeshSplitApp::setup()
 
 	generateVoronoiCells();
 
-	meshParts = splitMesh(mesh, con);
-	//meshParts = testSplit(mesh);
+	//meshParts = splitMesh(mesh, con);
+	meshParts = testSplit(mesh);
 }
 
 void MeshSplitApp::mouseDown(MouseEvent event)
@@ -114,7 +114,7 @@ void MeshSplitApp::draw()
 {
 	gl::enableDepth(true);
 	gl::clear(Color(0.5, 0.5, 0.5));
-	gl::enableFaceCulling(true);
+	gl::enableFaceCulling(false);
 	
 
 	CameraPersp cam;

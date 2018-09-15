@@ -107,7 +107,51 @@ std::vector<Triangle> getTriangles(const TriMesh& mesh)
 
 std::vector<cinder::TriMesh> testSplit(const TriMesh& mesh)
 {
-	return {};
+	TriMesh outMesh;
+	TriMesh capMesh;
+	Face face;
+	face.vertices = { vec3(-3.0f, 0.3f, 3.f), vec3(3.0f, 0.3f, 3.f),
+		 vec3(3.0f, 0.3f, -3.f), vec3(-3.0f, 0.3f, -3.f)
+	};
+	face.orient(vec3(1,- 1, 0.2));
+
+	//Plane plane(vec3(0.0f, 0.3f, 0.f), vec3(1, 1, 0.2));
+	Plane plane(face);
+
+	auto tris = getTriangles(mesh);
+	std::vector<Triangle> clippedTris;
+	std::vector<OrientedLineSegment> segments;
+	for (auto& t : tris)
+	{
+		auto r = cutTriangleByPlane(t, plane, segments);
+
+		for (const Triangle& tri : r)
+		{
+			const auto vCount = static_cast<uint32_t>(outMesh.getNumVertices());
+
+			outMesh.appendPosition(tri.a);
+			outMesh.appendPosition(tri.b);
+			outMesh.appendPosition(tri.c);
+
+			outMesh.appendTriangle(vCount, vCount + 1, vCount + 2);
+		}
+	}
+
+	auto capTriangles =  createCap(segments, face);
+	for (const Triangle& tri : capTriangles)
+	{
+		const auto vCount = static_cast<uint32_t>(capMesh.getNumVertices());
+
+		capMesh.appendPosition(tri.a);
+		capMesh.appendPosition(tri.b);
+		capMesh.appendPosition(tri.c);
+
+		capMesh.appendTriangle(vCount, vCount + 1, vCount + 2);
+	}
+
+	outMesh.recalculateNormals();
+	capMesh.recalculateNormals();
+	return { outMesh, capMesh };
 }
 
 /// Try to merge a new segment with the old ones, possibly creating a triangle to fill

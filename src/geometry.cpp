@@ -36,7 +36,7 @@ LineSegment LineSegment::cut(const Plane& plane) const
 		return result;
 	}
 
-	if (plane.isInside(line.origin))
+	if (plane.isInFrontStrict(getStart()))
 		return LineSegment(*this);
 	else
 		return LineSegment(line, 0,0);
@@ -85,8 +85,7 @@ LineSegment cutSegmentByFaceEdges(const LineSegment& originalSegment, const Face
 	if (glm::epsilonEqual(originalSegment.getLength(), 0.f, glm::epsilon<float>()*EPSILON_SCALE))
 		return originalSegment;
 
-	const Plane facePlane(face);
-
+	const vec3 faceNormal = face.getNormal();
 
 	LineSegment segment(originalSegment);
 	const auto vertCount = face.vertices.size();
@@ -94,14 +93,9 @@ LineSegment cutSegmentByFaceEdges(const LineSegment& originalSegment, const Face
 	{
 		const auto edgeStart = face.vertices[i];
 		const auto edgeEnd = face.vertices[(i + 1) % vertCount];
-		const auto edgeDirection = glm::normalize(edgeEnd - edgeStart);
-
-		if (glm::epsilonEqual(abs(glm::dot(segment.line.direction, edgeDirection)), 1.f, EPSILON_SCALE*glm::epsilon<float>()))
-			continue; // Line does not intersect the edge
 
 		// Construct a temporary plane to test against
-		const glm::vec3 outDirection = glm::normalize(glm::cross(edgeDirection, segment.line.direction));
-		const Plane edgePlane(edgeStart, glm::cross(outDirection, edgeDirection));
+		const Plane edgePlane(edgeStart, edgeStart + faceNormal, edgeEnd);
 
 		segment = segment.cut(edgePlane);
 	}
