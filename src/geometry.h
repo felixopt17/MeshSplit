@@ -32,6 +32,8 @@ bool fVecEquals(const fVecType& a, const fVecType& b)
 struct Line
 {
 	Line(const glm::vec3& origin, const glm::vec3& direction) :origin(origin), direction(glm::normalize(direction)) {}
+	Line& operator=(const Line& other) = default;
+
 
 	glm::vec3 origin;
 	glm::vec3 direction;
@@ -47,6 +49,8 @@ struct LineSegment
 	glm::vec3 getStart() const { return line.origin + a * line.direction; }
 	glm::vec3 getEnd() const { return line.origin + b * line.direction; }
 
+	LineSegment& operator=(const LineSegment& other) = default;
+
 	float getLength() const { return std::max(b - a, 0.f); }
 
 	LineSegment intersect(const LineSegment& other) const;
@@ -54,7 +58,7 @@ struct LineSegment
 	/// Cut line segment by a plane, keeping the part of the segment in front of the plane
 	LineSegment cut(const struct Plane& plane) const;
 
-	const Line line;
+	Line line;
 
 	float a;
 	float b;
@@ -62,6 +66,24 @@ struct LineSegment
 private:
 	/// Starting value for segment limits. Starting at float limits would be too imprecise
 	static const int KINDA_BIG_NUMBER = 10000; 
+};
+
+struct OrientedLineSegment
+{
+	OrientedLineSegment(const glm::vec3& from, const glm::vec3& to, const glm::vec3& insideDir) :segment(from, to), insideDir(insideDir){}
+	OrientedLineSegment(const LineSegment& segment, const glm::vec3& insideDir):segment(segment), insideDir(insideDir){}
+
+	/// Fix inside direction so that it is perpendicular to plane normal
+	void fixInsideDir(const glm::vec3& planeNormal)
+	{
+		auto fixedDir = glm::cross(segment.line.direction, planeNormal);
+		if (glm::dot(insideDir, fixedDir) > 0)
+			insideDir = fixedDir;
+		else
+			insideDir = -fixedDir;
+	}
+	LineSegment segment;
+	glm::vec3 insideDir;
 };
 
 /**
@@ -139,5 +161,5 @@ LineSegment cutSegmentByFaceEdges(const LineSegment& segment, const Face& face);
 bool isPointInFront(const Plane& plane, const glm::vec3& point);
 
 
-/// Split triangle by a plane. Return part of the triangle in front of the plane
-std::vector<Triangle> cutTriangleByPlane(const Triangle& triangle, const Plane& plane);
+/// Split triangle by a plane. Return part of the triangle in front of the plane. Output splitting segments into a segment array
+std::vector<Triangle> cutTriangleByPlane(const Triangle& triangle, const Plane& plane, std::vector<struct OrientedLineSegment>& segments);

@@ -86,16 +86,6 @@ LineSegment cutSegmentByFaceEdges(const LineSegment& originalSegment, const Face
 		return originalSegment;
 
 	const Plane facePlane(face);
-	assert(face.vertices.size() >= 3);
-	const auto projectionToNormal = glm::dot(originalSegment.line.direction, facePlane.normal);
-	assert(glm::epsilonEqual(projectionToNormal, 0.f, EPSILON_SCALE*glm::epsilon<float>())); //are perpendicular
-	const auto distanceFormPlane = facePlane.pointDistance(originalSegment.line.origin);
-	//assert(glm::epsilonEqual(distanceFormPlane, 0.f, EPSILON_SCALE*glm::epsilon<float>())); //is point on plane
-
-	/**
-	 * 1) Project line to the face
-	 * 2) Cut 2d line segment by each of the edges
-	 */
 
 
 	LineSegment segment(originalSegment);
@@ -110,29 +100,10 @@ LineSegment cutSegmentByFaceEdges(const LineSegment& originalSegment, const Face
 			continue; // Line does not intersect the edge
 
 		// Construct a temporary plane to test against
-		glm::vec3 outDirection = glm::normalize(glm::cross(edgeDirection, segment.line.direction));
-		Plane edgePlane(edgeStart, glm::cross(outDirection, edgeDirection));
+		const glm::vec3 outDirection = glm::normalize(glm::cross(edgeDirection, segment.line.direction));
+		const Plane edgePlane(edgeStart, glm::cross(outDirection, edgeDirection));
 
-		const float t = (edgePlane.scale - glm::dot(edgePlane.normal, segment.getStart())) / 
-			glm::dot(edgePlane.normal, segment.line.direction*segment.getLength());
-
-		if(t>=0.f && t<=1.0f)
-		{
-			const auto splitPointValue = segment.a + t * segment.getLength();
-			//TODO test that we keep the correct side of the segment
-			if(isPointInFront(edgePlane, segment.getStart()))
-			{
-				// Segment starts in front of the plane
-				// Keep start -> split 
-				segment.b = splitPointValue;
-			}
-			else
-			{
-				// Segment starts behind the plane
-				// Keep split-> end
-				segment.a = splitPointValue;
-			}
-		}
+		segment = segment.cut(edgePlane);
 	}
 
 	return segment;
@@ -145,7 +116,7 @@ bool isPointInFront(const Plane& plane, const glm::vec3& point)
 }
 
 
-std::vector<Triangle> cutTriangleByPlane(const Triangle& triangle, const Plane& plane)
+std::vector<Triangle> cutTriangleByPlane(const Triangle& triangle, const Plane& plane, std::vector<OrientedLineSegment>& segments)
 {
 	std::vector<vec3> pointsInFront;
 	std::vector<vec3> pointsInBack;
@@ -173,6 +144,7 @@ std::vector<Triangle> cutTriangleByPlane(const Triangle& triangle, const Plane& 
 		if (glm::dot(result.getNormal(), triangle.getNormal()) < 0)
 			result.changeWinding();
 
+		segments.emplace_back(aToB.getEnd(), aToC.getEnd(), triangle.getNormal());
 		return { result };
 	}
 
@@ -193,5 +165,6 @@ std::vector<Triangle> cutTriangleByPlane(const Triangle& triangle, const Plane& 
 	if (glm::dot(result2.getNormal(), triangle.getNormal()) < 0)
 		result2.changeWinding();
 
+	segments.emplace_back(intersections[0], intersections[1], triangle.getNormal());
 	return { result1, result2 };
 }

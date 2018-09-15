@@ -26,12 +26,6 @@ bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, const glm::ve
 
 
 /**
- * Split triangle by a face. Return part of the triangle that is in front of the face
- */
-std::vector<Triangle> cutTriangleByFace(const Triangle& triangle, const Face& face);
-
-
-/**
  * Split triangle by a line segment inside the triangle. Return new triangles
  */
 std::vector<Triangle> splitTriangleBySegment(const Triangle&triangle, const LineSegment& segment,const Plane& halfspace);
@@ -40,3 +34,6 @@ std::vector<Triangle> splitTriangleBySegment(const Triangle&triangle, const Line
 std::vector<Triangle> getTriangles(const TriMesh& mesh);
 
 std::vector<cinder::TriMesh> testSplit(const class TriMesh& mesh);
+
+/// Attempt to create a cap for the holecut by segments
+std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& splitSegments, const Face& face);

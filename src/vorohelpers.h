@@ -2,6 +2,7 @@
 #include "voro++.hh"
 #include "cinder/gl/gl.h"
 #include <vector>
+#include <numeric>
 
 /**
  * Helper functions for voro++
@@ -13,6 +14,14 @@ struct Face
 	Face(const struct Triangle& triangle);
 	/// Get normal vector of the plane
 	glm::vec3 getNormal() const;
+
+	glm::vec3 calcCenterPoint() const
+	{
+		const glm::vec3 centerPoint = std::accumulate(vertices.begin(), vertices.end(), glm::vec3(0.f, 0.f, 0.f), std::plus<glm::vec3>())
+			/ static_cast<float>(vertices.size());
+
+		return centerPoint;
+	}
 
 	/// Find direction vectors that are inside the plane and are not parallel
 	std::array<glm::vec3, 2> getDirectionVectors() const;

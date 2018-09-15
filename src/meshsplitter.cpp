@@ -107,28 +107,169 @@ std::vector<Triangle> getTriangles(const TriMesh& mesh)
 
 std::vector<cinder::TriMesh> testSplit(const TriMesh& mesh)
 {
-	TriMesh outMesh;
-	Plane plane(vec3(0.0f, 0.3f, 0.f), vec3(1, 1, 0.2));
-	auto tris = getTriangles(mesh);
-	std::vector<Triangle> clippedTris;
-	for (auto& t : tris)
+	return {};
+}
+
+/// Try to merge a new segment with the old ones, possibly creating a triangle to fill
+void tryMergeSegments(const OrientedLineSegment& segment, std::vector<OrientedLineSegment>& segments, std::vector<Triangle>& triangles, const Face& face)
+{
+	const auto faceNormal = face.getNormal();
+	// Calculate a plane that contains the segment with a normal pointing inside the fill shape
+	const auto calcSegmentPlane = [&](const OrientedLineSegment& segment)
 	{
-		auto r = cutTriangleByPlane(t, plane);
+		auto normal = glm::cross(faceNormal, segment.segment.line.direction);
+		if (glm::dot(normal, segment.insideDir) < 0.f)
+			normal = -normal;
 
-		for (const Triangle& tri : r)
+		return Plane(segment.segment.getStart(), normal);
+	};
+
+	// Look for old segments with one common point and attempt to merge with them into triangle and a segment
+	for (auto otherSegmentIt = segments.begin(); otherSegmentIt != segments.end(); ++otherSegmentIt)
+	{
+		// Note:
+		// Succesful call to mergeSegments() invalidates the iterator!
+		const auto mergeSegments = [&](const vec3& commonVertex, const vec3& firstOther, const vec3& secondOther)
 		{
-			const auto vCount = static_cast<uint32_t>(outMesh.getNumVertices());
+			if (fVecEquals(firstOther, secondOther))
+			{
+				// 0-size triangle, delete both segments
+				segments.erase(otherSegmentIt);
+				return true;
+			}
 
-			outMesh.appendPosition(tri.a);
-			outMesh.appendPosition(tri.b);
-			outMesh.appendPosition(tri.c);
+			auto plane1 = calcSegmentPlane(segment);
+			auto plane2 = calcSegmentPlane(*otherSegmentIt);
 
-			outMesh.appendTriangle(vCount, vCount + 1, vCount + 2);
+			const auto newSideMidpoint = (firstOther + secondOther) / 2.f;
+			if (plane1.isInFrontStrict(newSideMidpoint) && plane2.isInFrontStrict(newSideMidpoint))
+			{
+				OrientedLineSegment newSegment(firstOther, secondOther, glm::normalize(newSideMidpoint - commonVertex));
+				Triangle tri(commonVertex, firstOther, secondOther);
+
+				//keep correct winding order
+				if (glm::dot(tri.getNormal(), faceNormal) < 0)
+					tri.changeWinding();
+
+				//save triangle
+				triangles.push_back(tri);
+
+				//try to merge newly created segment
+				segments.erase(otherSegmentIt);
+				tryMergeSegments(newSegment, segments, triangles, face);
+
+				return true;
+			}
+
+			return false;
+		};
+
+		if (fVecEquals(segment.segment.getStart(), otherSegmentIt->segment.getStart()))
+		{
+			if (mergeSegments(segment.segment.getStart(), segment.segment.getEnd(), otherSegmentIt->segment.getEnd()))
+				return;
+		}
+		else
+			if (fVecEquals(segment.segment.getStart(), otherSegmentIt->segment.getEnd()))
+			{
+				if (mergeSegments(segment.segment.getStart(), segment.segment.getEnd(), otherSegmentIt->segment.getStart()))
+					return;
+			}
+			else
+				if (fVecEquals(segment.segment.getEnd(), otherSegmentIt->segment.getStart()))
+				{
+					if (mergeSegments(segment.segment.getEnd(), segment.segment.getStart(), otherSegmentIt->segment.getStart()))
+						return;
+				}
+				else
+					if (fVecEquals(segment.segment.getEnd(), otherSegmentIt->segment.getEnd()))
+					{
+						if (mergeSegments(segment.segment.getEnd(), segment.segment.getStart(), otherSegmentIt->segment.getEnd()))
+							return;
+					}
+	}
+
+	// Could not be merged, save it for later
+	segments.push_back(segment);
+}
+
+std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& splitSegments, const Face& face)
+{
+	const vec3 faceNormal = face.getNormal();
+	std::vector<Triangle> triangles;
+	std::vector<OrientedLineSegment> filteredSegments;
+	std::vector<glm::vec3> newFaceVertices;
+
+	// Filter away segments outside the face and cut crossing segments
+	// Attempt to merge segments into triangles
+	for (const auto s : splitSegments)
+	{
+		auto f = OrientedLineSegment(cutSegmentByFaceEdges(s.segment, face), s.insideDir);
+		if (f.segment.getLength() > 0)
+		{
+			tryMergeSegments(f, filteredSegments, triangles, face);
+
+			// Segments that get cut create new face vertices
+			if (!fVecEquals(s.segment.getStart(), f.segment.getStart()))
+				newFaceVertices.push_back(f.segment.getStart());
+
+			if (!fVecEquals(s.segment.getEnd(), f.segment.getEnd()))
+				newFaceVertices.push_back(f.segment.getEnd());
 		}
 	}
 
-	outMesh.recalculateNormals();
-	return { outMesh };
+	Face allEdgeVerts(face);
+	allEdgeVerts.vertices.insert(allEdgeVerts.vertices.end(), newFaceVertices.begin(), newFaceVertices.end());
+	allEdgeVerts.orient(face.getNormal());
+	const vec3 centerPoint = allEdgeVerts.calcCenterPoint();
+
+	// Merge remaining segments with next face edge to create more triangles
+	for (auto intersectingSegment = filteredSegments.begin(); intersectingSegment != filteredSegments.end();)
+	{
+		//find it's intersecting vertex
+		const auto intersectionVert = std::find_if(allEdgeVerts.vertices.begin(), allEdgeVerts.vertices.end(), [&](const vec3& v)
+		{
+			return fVecEquals(intersectingSegment->segment.getStart(), v) || fVecEquals(intersectingSegment->segment.getEnd(), v);
+		});
+
+
+		if (intersectionVert != allEdgeVerts.vertices.end())
+		{
+			// Find next vertex that is inside the triangle
+			const auto itToNext = intersectionVert + 1 != allEdgeVerts.vertices.end() ? intersectionVert + 1 : allEdgeVerts.vertices.begin();
+			const vec3 directionForward = *itToNext - *intersectionVert;
+
+			if (glm::dot(directionForward, intersectingSegment->insideDir))
+			{
+				OrientedLineSegment newSegment(*intersectionVert, *itToNext, centerPoint - *itToNext);
+				newSegment.fixInsideDir(faceNormal);
+				tryMergeSegments(newSegment, filteredSegments, triangles, face);
+			}
+			else
+			{
+				const auto itToPrev = intersectionVert == allEdgeVerts.vertices.begin() ? --allEdgeVerts.vertices.end() : intersectionVert - 1;
+				OrientedLineSegment newSegment(*intersectionVert, *itToPrev, centerPoint - *itToPrev);
+				newSegment.fixInsideDir(faceNormal);
+				tryMergeSegments(newSegment, filteredSegments, triangles, face);
+			}
+
+			// Iterator was invalidated, need to start loop from a good point
+			intersectingSegment = filteredSegments.begin();
+		}
+		else
+		{
+			// A segment that is not intersecting with the edge remained inside
+			// this should not happen for properly sealed meshes
+			//assert(false);
+			++intersectingSegment;
+			continue;
+		}
+	}
+
+
+	//TODO conthere
+
+	return triangles;
 }
 
 bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, const glm::vec3& particlePos, TriMesh& outMesh)
@@ -139,17 +280,25 @@ bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, const glm::ve
 	 */
 
 	auto triangles = getTriangles(source);
+	std::vector<Triangle> capTriangles;
 
 	auto faces = getFacesFromEdges(cell, particlePos);
 	for (const auto& face : faces)
 	{
 		std::vector<Triangle> newTriangles;
+		std::vector<OrientedLineSegment> splitSegments; //segments created by splitting a triangle in half
 		const Plane plane(face);
+
 		for (const Triangle& tri : triangles)
 		{
-			auto splitResult = cutTriangleByPlane(tri, plane);
+			auto splitResult = cutTriangleByPlane(tri, plane, splitSegments);
 			newTriangles.insert(std::end(newTriangles), std::begin(splitResult), std::end(splitResult));
 		}
+
+		auto capResult = createCap(splitSegments, face);
+		capTriangles.insert(std::end(capTriangles), std::begin(capResult), std::end(capResult));
+
+
 
 		std::swap(triangles, newTriangles);
 	}
@@ -165,44 +314,18 @@ bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, const glm::ve
 
 		outMesh.appendTriangle(vCount, vCount + 1, vCount + 2);
 	}
+	for (const Triangle& tri : capTriangles)
+	{
+		const auto vCount = static_cast<uint32_t>(outMesh.getNumVertices());
+
+		outMesh.appendPosition(tri.a);
+		outMesh.appendPosition(tri.b);
+		outMesh.appendPosition(tri.c);
+
+		outMesh.appendTriangle(vCount, vCount + 1, vCount + 2);
+	}
 
 	return !triangles.empty();
-}
-
-/**
- * Cut triangle by face. Only keep the part of the triangle that is in front of the face
- */
-std::vector<Triangle> cutTriangleByFace(const Triangle& triangle, const Face& face)
-{
-	const Plane triPlane(triangle);
-	const Plane facePlane(face);
-
-	// Triangles that are fully in front of the plane are kept unchanged
-	if (facePlane.isInFrontStrict(triangle.a) && facePlane.isInFrontStrict(triangle.b) && facePlane.isInFrontStrict(triangle.c))
-	{
-		return { triangle };
-	}
-
-	// Find new triangles from intersection
-	const auto intersection = triPlane.intersect(facePlane);
-	if (intersection.isLine)
-	{
-		// Limit the intersection to the faces
-		const auto faceSegment = cutSegmentByFaceEdges(LineSegment(intersection.line), face);
-		const auto commonSegment = cutSegmentByFaceEdges(faceSegment, Face(triangle));
-
-		if (commonSegment.getLength() > 0)
-		{
-			return splitTriangleBySegment(triangle, commonSegment, facePlane);
-		}
-		else
-		{
-			return {};
-		}
-	}
-
-	//TODO is not a line, is plane
-	return { triangle }; // bad temp "fix"
 }
 
 
