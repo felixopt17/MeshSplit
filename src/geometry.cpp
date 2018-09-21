@@ -3,6 +3,47 @@
 using glm::vec3;
 
 
+bool LineSegment::canMerge(const LineSegment& other) const
+{
+	if (!fVecEquals(line.direction, other.line.direction) &&
+		!fVecEquals(line.direction, -other.line.direction))
+		return false;
+
+	const auto originStartDir = other.getStart() - line.origin;
+	const auto originEndDir = other.getEnd() - line.origin;
+	const float startDistOnLine = glm::dot(line.direction, originStartDir);
+	const float endDistOnLine = glm::dot(line.direction, originEndDir);
+
+	// Make sure that projections on this line are close enough to the original point (ie, the origin of both lines are along the same direction)
+	if (!fVecEquals(line.origin + line.direction*startDistOnLine, other.getStart()))
+		return false;
+
+	if (!fVecEquals(line.origin + line.direction*endDistOnLine, other.getEnd()))
+		return false;
+
+	// Make sure that the segments are connected
+	const auto lowest = std::min(std::min(std::min(a, b), startDistOnLine), endDistOnLine);
+	const auto highest = std::max(std::max(std::max(a, b), startDistOnLine), endDistOnLine);
+
+	const float futureLength = highest - lowest;
+	const float currentCombinedLength = getLength() + other.getLength();
+	return futureLength<=currentCombinedLength;
+}
+
+LineSegment LineSegment::merge(const LineSegment& other) const
+{
+	assert(canMerge(other));
+
+	const auto originStartDir = other.getStart() - line.origin;
+	const auto originEndDir = other.getEnd() - line.origin;
+	float startDistOnLine = glm::dot(line.direction, originStartDir);
+	float endDistOnLine = glm::dot(line.direction, originEndDir);
+
+	const auto lowest = std::min(std::min(std::min(a, b), startDistOnLine), endDistOnLine);
+	const auto highest = std::max(std::max(std::max(a, b), startDistOnLine), endDistOnLine);
+	return LineSegment(line, lowest, highest);
+}
+
 LineSegment LineSegment::intersect(const LineSegment& other) const
 {
 	assert(fVecEquals(line.origin, other.line.origin));
@@ -138,7 +179,7 @@ std::vector<Triangle> cutTriangleByPlane(const Triangle& triangle, const Plane& 
 		if (glm::dot(result.getNormal(), triangle.getNormal()) < 0)
 			result.changeWinding();
 
-		segments.emplace_back(aToB.getEnd(), aToC.getEnd(), triangle.getNormal());
+		segments.emplace_back(aToB.getEnd(), aToC.getEnd(), -triangle.getNormal());
 		return { result };
 	}
 
@@ -159,6 +200,6 @@ std::vector<Triangle> cutTriangleByPlane(const Triangle& triangle, const Plane& 
 	if (glm::dot(result2.getNormal(), triangle.getNormal()) < 0)
 		result2.changeWinding();
 
-	segments.emplace_back(intersections[0], intersections[1], triangle.getNormal());
+	segments.emplace_back(intersections[0], intersections[1], -triangle.getNormal());
 	return { result1, result2 };
 }

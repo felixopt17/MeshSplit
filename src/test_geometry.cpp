@@ -152,6 +152,56 @@ TEST(LineSegmentTest, IntersectPlaneRegression1)
 	assertVec(cutSegment.getEnd(), segment.getEnd());
 }
 
+TEST(LineSegmentTest, MergeSameLine)
+{
+	const Line line1(vec3(0.f, 0.f, 0.f), vec3(1.f, 1.f, 1.f));
+
+	const LineSegment a(line1, 0.f, 1.f);
+	const LineSegment b(line1, 0.5f, 2.f);
+	ASSERT_TRUE(a.canMerge(b));
+	ASSERT_TRUE(b.canMerge(a));
+
+	const auto result = a.merge(b);
+	EXPECT_FLOAT_EQ(result.a , 0.0f);
+	EXPECT_FLOAT_EQ(result.b,  2.0f);
+
+	assertVec(result.line.direction, line1.direction);
+	assertVec(result.line.origin, line1.origin);
+
+	// Make sure result is correct from either side
+	const auto result2 = b.merge(a);
+	assertVec(result.getStart(), result2.getStart());
+	assertVec(result.getEnd(), result2.getEnd());
+}
+
+TEST(LineSegmentTest, MergeFailTest)
+{
+	const Line line1(vec3(0.f, 0.f, 0.f), vec3(1.f, 1.f, 1.f));
+	const Line line2(vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, -1.f));
+
+	const LineSegment a(line1, 0.f, 1.f);
+	const LineSegment b(line2, 0.5f, 2.f);
+	EXPECT_FALSE(a.canMerge(b));
+	EXPECT_FALSE(b.canMerge(a));
+}
+
+TEST(LineSegmentTest, MergeOppositeLine)
+{
+	const Line line1(vec3(0.f, 0.f, 0.f), vec3(1.f, 1.f, 1.f));
+	const Line line2(vec3(0.f, 0.f, 0.f), vec3(1.f, 0.f, -1.f));
+
+	const LineSegment a(line1, 0.f, 1.f);
+
+	/// Origin on the correct line, reverse direction vector
+	const LineSegment d(Line(line1.origin, -line1.direction), 0.0f, 2.f);
+	ASSERT_TRUE(a.canMerge(d));
+	ASSERT_TRUE(d.canMerge(a));
+
+	const auto result = a.merge(d);
+	EXPECT_FLOAT_EQ(result.a, -2.f);
+	EXPECT_FLOAT_EQ(result.b, 1.f);
+}
+
 TEST(PlaneTest, PlaneConstructorEquality)
 {
 	const glm::vec3 a(0.f, 0.f, 0.f);

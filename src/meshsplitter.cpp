@@ -177,7 +177,7 @@ void tryMergeSegments(const OrientedLineSegment& segment, std::vector<OrientedLi
 		{
 			if (fVecEquals(firstOther, secondOther))
 			{
-				// 0-size triangle, delete both segments
+				// 0-size triangle, delete both segments (this one occurs naturally from the last triangle edge)
 				segments.erase(otherSegmentIt);
 				return true;
 			}
@@ -189,10 +189,11 @@ void tryMergeSegments(const OrientedLineSegment& segment, std::vector<OrientedLi
 			if (plane1.isInFrontStrict(newSideMidpoint) && plane2.isInFrontStrict(newSideMidpoint))
 			{
 				OrientedLineSegment newSegment(firstOther, secondOther, glm::normalize(newSideMidpoint - commonVertex));
+				newSegment.fixInsideDir(faceNormal);
 				Triangle tri(commonVertex, firstOther, secondOther);
 
-				//keep correct winding order
-				if (glm::dot(tri.getNormal(), faceNormal) < 0)
+				//make sure that triangle's normal points outside the cell
+				if (glm::dot(tri.getNormal(), faceNormal) > 0)
 					tri.changeWinding();
 
 				//save triangle
@@ -222,13 +223,13 @@ void tryMergeSegments(const OrientedLineSegment& segment, std::vector<OrientedLi
 			else
 				if (fVecEquals(segment.segment.getEnd(), otherSegmentIt->segment.getStart()))
 				{
-					if (mergeSegments(segment.segment.getEnd(), segment.segment.getStart(), otherSegmentIt->segment.getStart()))
+					if (mergeSegments(segment.segment.getEnd(), segment.segment.getStart(), otherSegmentIt->segment.getEnd()))
 						return;
 				}
 				else
 					if (fVecEquals(segment.segment.getEnd(), otherSegmentIt->segment.getEnd()))
 					{
-						if (mergeSegments(segment.segment.getEnd(), segment.segment.getStart(), otherSegmentIt->segment.getEnd()))
+						if (mergeSegments(segment.segment.getEnd(), segment.segment.getStart(), otherSegmentIt->segment.getStart()))
 							return;
 					}
 	}
@@ -237,21 +238,44 @@ void tryMergeSegments(const OrientedLineSegment& segment, std::vector<OrientedLi
 	segments.push_back(segment);
 }
 
+/**
+ * Add new segment into the array, merging with other segments on the same line
+ */
+void addAndMergeSameLine(const OrientedLineSegment& segment, std::vector<struct OrientedLineSegment>& otherSegments, const Face& face)
+{
+	const auto faceNormal = face.getNormal();
+
+	for (auto otherSegmentIt = otherSegments.begin(); otherSegmentIt != otherSegments.end(); ++otherSegmentIt)
+	{
+		if (segment.segment.canMerge(otherSegmentIt->segment) && glm::dot(segment.insideDir, otherSegmentIt->insideDir) > 0)
+		{
+			// Segments are along the same line, combine them into one
+			OrientedLineSegment newSegment(segment.segment.merge(otherSegmentIt->segment), segment.insideDir);
+			newSegment.fixInsideDir(faceNormal);
+			otherSegments.erase(otherSegmentIt);
+			addAndMergeSameLine(newSegment, otherSegments, face);
+			return;
+		}
+	}
+
+	otherSegments.push_back(segment);
+}
+
 std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& splitSegments, const Face& face)
 {
 	const vec3 faceNormal = face.getNormal();
 	std::vector<Triangle> triangles;
+	std::vector<OrientedLineSegment> cutSegments;
 	std::vector<OrientedLineSegment> filteredSegments;
 	std::vector<glm::vec3> newFaceVertices;
 
 	// Filter away segments outside the face and cut crossing segments
-	// Attempt to merge segments into triangles
 	for (const auto s : splitSegments)
 	{
 		auto f = OrientedLineSegment(cutSegmentByFaceEdges(s.segment, face), s.insideDir);
 		if (f.segment.getLength() > 0)
 		{
-			tryMergeSegments(f, filteredSegments, triangles, face);
+			addAndMergeSameLine(f, cutSegments, face);
 
 			// Segments that get cut create new face vertices
 			if (!fVecEquals(s.segment.getStart(), f.segment.getStart()))
@@ -261,6 +285,14 @@ std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& s
 				newFaceVertices.push_back(f.segment.getEnd());
 		}
 	}
+
+	// Attempt to merge segments into triangles
+	for (const auto s : cutSegments)
+	{
+			tryMergeSegments(s, filteredSegments, triangles, face);
+	}
+
+
 
 	Face allEdgeVerts(face);
 	allEdgeVerts.vertices.insert(allEdgeVerts.vertices.end(), newFaceVertices.begin(), newFaceVertices.end());

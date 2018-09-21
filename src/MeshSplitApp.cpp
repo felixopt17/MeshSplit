@@ -90,8 +90,8 @@ void MeshSplitApp::generateVoronoiCells()
 
 void MeshSplitApp::setup()
 {
-	mesh = geom::Teapot();
-
+	//mesh = geom::Teapot();
+	mesh = geom::Cube();
 	generateVoronoiCells();
 
 	//meshParts = splitMesh(mesh, con);
@@ -131,7 +131,7 @@ void MeshSplitApp::draw()
 
 	gl::pushModelMatrix();
 	gl::scale(2, 2, 2);
-	gl::rotate(3.1415f*2.f*getElapsedSeconds() / 8, vec3(0, 1, 0));
+	gl::rotate(static_cast<float>(3.1415*2.0*getElapsedSeconds() / 8), vec3(0, 1, 0));
 	gl::draw(mesh);
 
 	gl::popModelMatrix();

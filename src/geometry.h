@@ -49,6 +49,12 @@ struct LineSegment
 	glm::vec3 getStart() const { return line.origin + a * line.direction; }
 	glm::vec3 getEnd() const { return line.origin + b * line.direction; }
 
+	/// Can merge with this line segment to form a continuous segment?
+	bool canMerge(const LineSegment& other) const;
+
+	/// Merge with a line segment to create a new one. Both segments must be connected
+	LineSegment merge(const LineSegment& other) const;
+
 	LineSegment& operator=(const LineSegment& other) = default;
 
 	float getLength() const { return std::max(b - a, 0.f); }

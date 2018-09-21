@@ -203,7 +203,7 @@ ci::TriMesh meshFromFaces(const std::vector<Face>& faces)
 
 		for (uint32_t i = 2; i < static_cast<uint32_t>(face.vertices.size()); i++)
 		{
-			const auto cornerIdx = mesh.getNumVertices();
+			const uint32_t cornerIdx = static_cast<uint32_t>(mesh.getNumVertices());
 			mesh.appendPosition(face.vertices[i - 1]);
 			mesh.appendPosition(face.vertices[i]);
 			mesh.appendTriangle(originIdx, cornerIdx + 1, cornerIdx + 0);
