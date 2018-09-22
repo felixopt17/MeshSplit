@@ -5,8 +5,7 @@ using glm::vec3;
 
 bool LineSegment::canMerge(const LineSegment& other) const
 {
-	if (!fVecEquals(line.direction, other.line.direction) &&
-		!fVecEquals(line.direction, -other.line.direction))
+	if (glm::abs(glm::dot(line.direction, other.line.direction))<0.999f)
 		return false;
 
 	const auto originStartDir = other.getStart() - line.origin;
@@ -21,13 +20,13 @@ bool LineSegment::canMerge(const LineSegment& other) const
 	if (!fVecEquals(line.origin + line.direction*endDistOnLine, other.getEnd()))
 		return false;
 
-	// Make sure that the segments are connected
+	// Make sure that the segments are connected (with a small tolerance)
 	const auto lowest = std::min(std::min(std::min(a, b), startDistOnLine), endDistOnLine);
 	const auto highest = std::max(std::max(std::max(a, b), startDistOnLine), endDistOnLine);
 
 	const float futureLength = highest - lowest;
 	const float currentCombinedLength = getLength() + other.getLength();
-	return futureLength<=currentCombinedLength;
+	return futureLength <= currentCombinedLength + EPSILON_SCALE * glm::epsilon<float>();
 }
 
 LineSegment LineSegment::merge(const LineSegment& other) const
