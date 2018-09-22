@@ -122,7 +122,7 @@ PlaneIntersectionResult Plane::intersect(const Plane& other) const
 LineSegment cutSegmentByFaceEdges(const LineSegment& originalSegment, const Face& face)
 {
 	if (glm::epsilonEqual(originalSegment.getLength(), 0.f, glm::epsilon<float>()*EPSILON_SCALE))
-		return originalSegment;
+		return LineSegment(originalSegment.line, 0,0);
 
 	const vec3 faceNormal = face.getNormal();
 
