@@ -19,28 +19,26 @@ void setTitleMessage(const std::string& str)
 }
 
 
-vector<TriMesh> splitMesh(const TriMesh& sourceMesh, const std::vector<Cell>& cells)
+vector<TriMesh> splitMesh(const TriMesh& sourceMesh,const std::vector<Cell>& cells)
 {
 	vector<TriMesh> result;
 
 	// Loop over all cells and test for collision with the mesh
-	for (size_t i = 0; i < cells.size(); i++)
+	for(size_t i=0;i<cells.size();i++)
 	{
 		const Cell& cell = cells[i];
 		setTitleMessage("Splitting with cell " + std::to_string(i) + "/" + std::to_string(cells.size()));
 
-		// TODO uncomment
-		//if (cellIntersectsMesh(sourceMesh, cell))
-		{
-			TriMesh intersectionMesh;
 
-			// TODO: make if
-			intersectMesh(sourceMesh, cell, intersectionMesh);
+			if (cellIntersectsMesh(sourceMesh, cell))
 			{
-				intersectionMesh.recalculateNormals();
-				result.emplace_back(std::move(intersectionMesh));
+				TriMesh intersectionMesh;
+				if (intersectMesh(sourceMesh, cell, intersectionMesh))
+				{
+					intersectionMesh.recalculateNormals();
+					result.emplace_back(std::move(intersectionMesh));
+				}
 			}
-		}
 
 
 	}
@@ -49,15 +47,15 @@ vector<TriMesh> splitMesh(const TriMesh& sourceMesh, const std::vector<Cell>& ce
 	return result;
 }
 
-cinder::AxisAlignedBox calculateCellBounds(const std::vector<Face>& cellFaces)
+cinder::AxisAlignedBox calculateCellBounds(const std::vector<Face>& cellFaces, const glm::vec3& particlePos)
 {
 	using glm::vec3;
 
 	vec3 min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
 	vec3 max(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest());
 
-	for (const Face& face : cellFaces)
-		for (const vec3& pos : face.vertices)
+	for(const Face& face: cellFaces)
+		for(const vec3& pos: face.vertices)
 		{
 			min.x = glm::min(pos.x, min.x);
 			min.y = glm::min(pos.y, min.y);
@@ -73,10 +71,10 @@ cinder::AxisAlignedBox calculateCellBounds(const std::vector<Face>& cellFaces)
 
 
 
-bool cellIntersectsMesh(const TriMesh& mesh, const std::vector<Face>& cellFaces)
+bool cellIntersectsMesh(const TriMesh& mesh, const std::vector<Face>& cellFaces, const glm::vec3& particlePos)
 {
 	auto bounds = mesh.calcBoundingBox();
-	const auto cellBounds = calculateCellBounds(cellFaces);
+	const auto cellBounds = calculateCellBounds(cellFaces, particlePos);
 
 	return bounds.intersects(cellBounds);
 }
@@ -177,7 +175,7 @@ void tryMergeSegments(const OrientedLineSegment& segment, std::vector<OrientedLi
 			auto plane2 = calcSegmentPlane(*otherSegmentIt);
 
 			const auto newSideMidpoint = (firstOther + secondOther) / 2.f;
-			if (plane1.isInFrontOrInside(newSideMidpoint) && plane2.isInFrontOrInside(newSideMidpoint))
+			if (plane1.isInFrontStrict(newSideMidpoint) && plane2.isInFrontStrict(newSideMidpoint))
 			{
 				OrientedLineSegment newSegment(firstOther, secondOther, glm::normalize(newSideMidpoint - commonVertex));
 				newSegment.fixInsideDir(faceNormal);
@@ -297,41 +295,6 @@ std::vector<vec3> findEdgesBetweenNewVerts(const size_t startVertIdx, const std:
 	return result;
 }
 
-/**
- * Remove segments that do not start and end at the face edges.
- * Those segments can come from bad input data, floating precission errors, or infinitely thin slices along the face boundary
- */
-void removeBrokenSegments(vector<OrientedLineSegment>& segments, const Face& face)
-{
-	Plane facePlane(face);
-	for (size_t i = 0; i < segments.size();)
-	{
-		const auto& segment = segments[i];
-
-		bool isSegmentOnPlane = std::max(facePlane.pointDistance(segment.segment.getStart()),
-			facePlane.pointDistance(segment.segment.getEnd())) < 0.001f;
-		// Test segment for each face edge
-		float closestEdgeDist = std::numeric_limits<float>::max();
-		for(size_t j=0;j<face.vertices.size();j++)
-		{
-			const size_t nextIdx = (j + 1) % face.vertices.size();
-
-			//TODO check plane dist
-		}
-
-
-
-		if (segments[i].segment.getLength() < 0.001)
-		{
-			segments.erase(segments.begin() + i);
-		}
-		else
-		{
-			++i;
-		}
-	}
-}
-
 std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& splitSegments, const Face& face, std::unordered_set<glm::vec3>& globalUsedVerts)
 {
 	const vec3 faceNormal = face.getNormal();
@@ -349,19 +312,14 @@ std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& s
 		}
 	}
 
-	std::vector<std::string> gbrSegments = geogebraExport(cutSegments);
-
 	// Attempt to merge segments into triangles
 	for (const auto& s : cutSegments)
 	{
 		tryMergeSegments(s, filteredSegments, triangles, face);
 	}
 
-	gbrSegments = geogebraExport(filteredSegments);
 
 	//removeShortSegments(filteredSegments);
-
-	//removeBrokenSegments(filteredSegments, face);
 
 	// Segments that did not get merged or triangulized must intersect the face edge at both points
 	std::unordered_set<vec3> newFaceVerts;
@@ -444,19 +402,7 @@ std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& s
 	return triangles;
 }
 
-std::vector<std::string> geogebraExport(const std::vector<OrientedLineSegment>& segments)
-{
-	std::vector<std::string> gbrSegments;
-	auto v3ToStr = [](const glm::vec3& v) {return std::string("(") + std::to_string(v.x) + "," + std::to_string(v.y) + "," + std::to_string(v.z) + ")"; };
-	for (const auto& s : segments)
-	{
-		gbrSegments.emplace_back(std::string("Segment(") + v3ToStr(s.segment.getStart()) + "," + v3ToStr(s.segment.getEnd()) + ")");
-	}
-
-	return gbrSegments;
-}
-
-bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMesh& outMesh)
+bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, const glm::vec3& particlePos, TriMesh& outMesh)
 {
 	/*
 	 * Intersect all triangles in source mesh with the cell
@@ -468,7 +414,7 @@ bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMes
 	std::unordered_set<glm::vec3> usedVertices; //face vertices that are part of the mesh
 
 	std::vector<Face> emptyFaces;
-	for (int i = 0; i < faces.size(); i++)
+	for (int i=0;i<faces.size();i++)
 	{
 		const auto& face = faces[i];
 
@@ -481,10 +427,6 @@ bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMes
 			auto splitResult = cutTriangleByPlane(tri, plane, splitSegments);
 			newTriangles.insert(std::end(newTriangles), std::begin(splitResult), std::end(splitResult));
 		}
-
-
-		std::vector<std::string> gbrSegments = geogebraExport(splitSegments);
-
 
 		auto capResult = createCap(splitSegments, face, usedVertices);
 
@@ -551,9 +493,9 @@ glm::vec3 getClosest(const glm::vec3& source, const glm::vec3& a, const::glm::ve
 std::vector<Triangle> splitTriangleBySegment(const Triangle& triangle, const LineSegment& segment, const Plane& halfspace)
 {
 	std::vector<glm::vec3> verticesToKeep;
-	if (halfspace.isInFrontOrInside(triangle.a)) verticesToKeep.push_back(triangle.a);
-	if (halfspace.isInFrontOrInside(triangle.b)) verticesToKeep.push_back(triangle.b);
-	if (halfspace.isInFrontOrInside(triangle.c)) verticesToKeep.push_back(triangle.c);
+	if (halfspace.isInFrontStrict(triangle.a)) verticesToKeep.push_back(triangle.a);
+	if (halfspace.isInFrontStrict(triangle.b)) verticesToKeep.push_back(triangle.b);
+	if (halfspace.isInFrontStrict(triangle.c)) verticesToKeep.push_back(triangle.c);
 
 	assert(!verticesToKeep.empty());
 

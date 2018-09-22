@@ -152,6 +152,30 @@ TEST(LineSegmentTest, IntersectPlaneRegression1)
 	assertVec(cutSegment.getEnd(), segment.getEnd());
 }
 
+TEST(LineSegmentTest, IntersectPlaneStartInPlane)
+{
+	const Plane horizontalPlane(glm::vec3(0.f, 5.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+	const Line line(vec3(0.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f));
+	const LineSegment segment(line, 5.f, 10.f);
+
+	/// Line segment should be preserved, including the intersection point
+	auto cutSegment = segment.cut(horizontalPlane);
+	assertVec(cutSegment.getStart(), segment.getStart());
+	assertVec(cutSegment.getEnd(), segment.getEnd());
+}
+
+TEST(LineSegmentTest, IntersectPlaneEndInPlane)
+{
+	const Plane horizontalPlane(glm::vec3(0.f, 5.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+	const Line line(vec3(0.f, 0.f, 0.f), vec3(0.f, -1.f, 0.f));
+	const LineSegment segment(line, -10.f, -5.f);
+
+	/// Line segment should be preserved, including the intersection point
+	auto cutSegment = segment.cut(horizontalPlane);
+	assertVec(cutSegment.getStart(), segment.getStart());
+	assertVec(cutSegment.getEnd(), segment.getEnd());
+}
+
 TEST(LineSegmentTest, MergeSameLine)
 {
 	const Line line1(vec3(0.f, 0.f, 0.f), vec3(1.f, 1.f, 1.f));
@@ -257,18 +281,21 @@ TEST(PlaneTest, PlaneIntersectionLineBasic2)
 }
 
 
+
+
+
 TEST(PlaneTest, PointInFrontBasic)
 {
 	const vec3 planeOrigin(3.f, 5.f, -4.f);
 	const Plane horizontalPlane(planeOrigin, glm::vec3(0.f, 1.f, 0.f));
 
 	const glm::vec3 a(0.f, 0.f, 0.f);
-	ASSERT_FALSE(horizontalPlane.isInFrontStrict(a)); //Point below
+	ASSERT_FALSE(horizontalPlane.isInFrontOrInside(a)); //Point below
 
 	const glm::vec3 b(1.f, 5.5f, -4.f);
-	ASSERT_TRUE(horizontalPlane.isInFrontStrict(b)); //Point above
+	ASSERT_TRUE(horizontalPlane.isInFrontOrInside(b)); //Point above
 
-	ASSERT_TRUE(horizontalPlane.isInFrontStrict(planeOrigin)); //Point in plane
+	ASSERT_TRUE(horizontalPlane.isInFrontOrInside(planeOrigin)); //Point in plane
 }
 
 TEST(TriangleTest, TrianglePlaneCutNoChange)

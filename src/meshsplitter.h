@@ -5,24 +5,27 @@
 #include "vorohelpers.h"
 #include "glm/gtc/epsilon.hpp"
 #include "geometry.h"
+#include <unordered_set>
 
 using std::vector;
 using ci::TriMesh;
 
+typedef std::vector<Face> Cell;
+
 void setTitleMessage(const std::string& str);
 
 
-vector<TriMesh> splitMesh(const TriMesh& sourceMesh, voro::container& container);
+vector<TriMesh> splitMesh(const TriMesh& sourceMesh, const std::vector<Cell>& cells);
 
 /**
  * Broad test for mesh - cell intersection
  */
-bool cellIntersectsMesh(const TriMesh& mesh, voro::voronoicell& cell, const glm::vec3& particlePos);
+bool cellIntersectsMesh(const TriMesh& mesh, const std::vector<Face>& cellFaces);
 
 /**
  * Calculate intersection of a source mesh and a voronoi cell as a new mesh
  */
-bool intersectMesh(const TriMesh& source, voro::voronoicell& cell, const glm::vec3& particlePos, TriMesh& outMesh);
+bool intersectMesh(const TriMesh& source, const std::vector<Face>& cellFaces, TriMesh& outMesh);
 
 
 /**
@@ -36,4 +39,7 @@ std::vector<Triangle> getTriangles(const TriMesh& mesh);
 std::vector<cinder::TriMesh> testSplit(const class TriMesh& mesh);
 
 /// Attempt to create a cap for the holecut by segments
-std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& splitSegments, const Face& face);
+std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& splitSegments, const Face& face, std::unordered_set<glm::vec3>& usedVertices);
+
+
+std::vector<std::string> geogebraExport(const std::vector<OrientedLineSegment>& segments);

@@ -28,15 +28,21 @@ public:
 	void draw() override;
 	void keyDown(KeyEvent event) override;
 
+	void draw3DLine(Camera& cam, vec3 a, vec3 b);
+	void drawFaceLines(Camera& cam);
 private:
 	TriMesh mesh;
+	TriMesh faceMesh;
 	voro::container con;
 
-	//std::vector<std::vector<Face>> cells;
+	bool drawFace = false;
+
+	std::vector<std::vector<Face>> cells;
 	std::vector<TriMesh> meshParts;
 	static const int MAX_SIZE = 5;
 
 	int currentPart = 0;
+	int currentFace = 0;
 
 private:
 
@@ -66,12 +72,12 @@ void MeshSplitApp::generateVoronoiCells()
 
 	getWindow()->setTitle("Voronoi cells generated");
 
-	/*// Loop over all particles and save computed voronoi cells
+	// Loop over all particles and save computed voronoi cells
 	voro::c_loop_all vLoop(con);
 	vLoop.start();
 	do
 	{
-		getWindow()->setTitle("Generating cell faces " + to_string(vLoop.pid())+"/"+to_string(con.total_particles()));
+		getWindow()->setTitle("Generating cell faces " + to_string(vLoop.pid()) + "/" + to_string(con.total_particles()));
 		voro::voronoicell vcell;
 
 		if (con.compute_cell(vcell, vLoop))
@@ -85,21 +91,40 @@ void MeshSplitApp::generateVoronoiCells()
 
 	} while (vLoop.inc());
 
-	getWindow()->setTitle("Cell faces generated");*/
+	getWindow()->setTitle("Cell faces generated");
 }
 
 void MeshSplitApp::setup()
 {
-	//mesh = geom::Teapot();
 	mesh = geom::Cube();
 	generateVoronoiCells();
 
-	//meshParts = splitMesh(mesh, con);
-	meshParts = testSplit(mesh);
+	meshParts = splitMesh(mesh, cells);
+	//meshParts = testSplit(mesh);
 }
 
 void MeshSplitApp::mouseDown(MouseEvent event)
 {
+}
+
+
+void MeshSplitApp::draw3DLine(Camera& cam, vec3 a, vec3 b)
+{
+	const auto screenA = cam.worldToScreen(a, getWindowWidth(), getWindowHeight());
+	const auto screenB = cam.worldToScreen(b, getWindowWidth(), getWindowHeight());
+	ci::gl::drawLine(screenA, screenB);
+}
+
+void MeshSplitApp::drawFaceLines(Camera& cam)
+{
+	/*auto& faces = cells[currentPart%meshParts.size()];
+
+	auto& face = faces[currentFace%faces.size()];
+	for(size_t i=1; i<=face.vertices.size();i++)
+	{
+		draw3DLine(cam, face.vertices[i - 1], face.vertices[i%face.vertices.size()]);
+	}*/
+	gl::draw(faceMesh);
 }
 
 void MeshSplitApp::update()
@@ -115,10 +140,11 @@ void MeshSplitApp::draw()
 	gl::enableDepth(true);
 	gl::clear(Color(0.5, 0.5, 0.5));
 	gl::enableFaceCulling(false);
-	
+
+	gl::lineWidth(3);
 
 	CameraPersp cam;
-	cam.lookAt(vec3(3, 3, 3), vec3(0));
+	cam.lookAt(vec3(2, 2, 2), vec3(0));
 	gl::setMatrices(cam);
 
 	const auto lambert = gl::ShaderDef().lambert();
@@ -130,9 +156,13 @@ void MeshSplitApp::draw()
 	//gl::drawSphere(vec3(), 1.0f, 40);
 
 	gl::pushModelMatrix();
-	gl::scale(2, 2, 2);
+	//gl::scale(2, 2, 2);
 	gl::rotate(static_cast<float>(3.1415*2.0*getElapsedSeconds() / 8), vec3(0, 1, 0));
 	gl::draw(mesh);
+
+	if (drawFace)
+		drawFaceLines(cam);
+
 
 	gl::popModelMatrix();
 
@@ -143,11 +173,30 @@ void MeshSplitApp::keyDown(KeyEvent event)
 	if (event.getChar() == '+')
 	{
 		currentPart++;
-		if(!meshParts.empty())
+		currentFace = 0;
+		if (!meshParts.empty())
 			mesh = meshParts[currentPart%meshParts.size()];
+
+		auto& faces = cells[currentPart%cells.size()];
+		faceMesh = meshFromFaces({ faces });
 	}
 
-	if(event.getChar() =='w')
+	if (event.getChar() == 'p')
+	{
+		currentFace++;
+		auto& faces = cells[currentPart%cells.size()];
+
+		faceMesh = meshFromFaces({ faces[currentFace%faces.size()] });
+	}
+
+	if (event.getChar() == 'f')
+	{
+		drawFace = !drawFace;
+		auto& faces = cells[currentPart%cells.size()];
+		faceMesh = meshFromFaces({ faces[currentFace%faces.size()] });
+	}
+
+	if (event.getChar() == 'w')
 	{
 		static bool wireframe;
 		if (wireframe)

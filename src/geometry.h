@@ -76,8 +76,8 @@ private:
 
 struct OrientedLineSegment
 {
-	OrientedLineSegment(const glm::vec3& from, const glm::vec3& to, const glm::vec3& insideDir) :segment(from, to), insideDir(insideDir){}
-	OrientedLineSegment(const LineSegment& segment, const glm::vec3& insideDir):segment(segment), insideDir(insideDir){}
+	OrientedLineSegment(const glm::vec3& from, const glm::vec3& to, const glm::vec3& insideDir) :segment(from, to), insideDir(glm::normalize(insideDir)){}
+	OrientedLineSegment(const LineSegment& segment, const glm::vec3& insideDir):segment(segment), insideDir(glm::normalize(insideDir)){}
 
 	/// Fix inside direction so that it is perpendicular to plane normal
 	void fixInsideDir(const glm::vec3& planeNormal)
@@ -107,15 +107,15 @@ struct Plane
 	/// Calculate intersection with other plane
 	struct PlaneIntersectionResult intersect(const Plane& other) const;
 
-	/// Is point in front of the plane (does not use thickness)
-	bool isInFrontStrict(const glm::vec3& point) const
+	/// Is point in front of the plane
+	bool isInFrontOrInside(const glm::vec3& point) const
 	{
 		return glm::dot(normal, point) >= scale;
 	}
 
-	bool isInside(const glm::vec3& point) const
+	bool isInFront(const glm::vec3& point) const
 	{
-		return pointDistance(point) < THICKNESS;
+		return glm::dot(normal, point) > scale;
 	}
 
 	float pointDistance(const glm::vec3& point) const
@@ -125,7 +125,6 @@ struct Plane
 
 	glm::vec3 normal;
 	float scale;
-	static const float THICKNESS;
 };
 
 struct PlaneIntersectionResult

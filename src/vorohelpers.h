@@ -3,6 +3,7 @@
 #include "cinder/gl/gl.h"
 #include <vector>
 #include <numeric>
+#include <glm/gtx/hash.hpp>
 
 /**
  * Helper functions for voro++
@@ -23,6 +24,9 @@ struct Face
 		return centerPoint;
 	}
 
+	/// Get triangles making up the face. Make sure to orient the vertices in CCW order.
+	std::vector<Triangle> triangulate() const;
+
 	/// Find direction vectors that are inside the plane and are not parallel
 	std::array<glm::vec3, 2> getDirectionVectors() const;
 
@@ -42,3 +46,4 @@ std::vector<Face> getFaces(voro::voronoicell& cell);
 std::vector<Face> getFacesFromEdges(voro::voronoicell& cell, const glm::vec3& particlePos);
 
 ci::TriMesh meshFromFaces(const std::vector<Face>& faces);
+

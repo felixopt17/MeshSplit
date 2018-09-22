@@ -63,7 +63,7 @@ LineSegment LineSegment::cut(const Plane& plane) const
 		LineSegment result(*this);
 
 		// Keep the part in front
-		if (plane.isInFrontStrict(getStart()))
+		if (plane.isInFront(getStart()))
 		{
 			const auto distFromA = t * result.getLength();
 			result.b = result.a + distFromA;
@@ -77,14 +77,13 @@ LineSegment LineSegment::cut(const Plane& plane) const
 		return result;
 	}
 
-	if (plane.isInFrontStrict(getStart()))
+	if (plane.isInFront(getStart()))
 		return LineSegment(*this);
 	else
 		return LineSegment(line, 0,0);
 
 }
 
-const float Plane::THICKNESS(std::numeric_limits<float>::epsilon()*EPSILON_SCALE);
 
 Plane::Plane(const struct Triangle& tri) :Plane(tri.a, tri.b, tri.c) {}
 Plane::Plane(const struct Face& face)
@@ -147,7 +146,7 @@ LineSegment cutSegmentByFaceEdges(const LineSegment& originalSegment, const Face
 
 bool isPointInFront(const Plane& plane, const glm::vec3& point)
 {
-	return plane.isInFrontStrict(point);
+	return plane.isInFrontOrInside(point);
 }
 
 
@@ -155,9 +154,9 @@ std::vector<Triangle> cutTriangleByPlane(const Triangle& triangle, const Plane& 
 {
 	std::vector<vec3> pointsInFront;
 	std::vector<vec3> pointsInBack;
-	if (plane.isInFrontStrict(triangle.a)) pointsInFront.push_back(triangle.a); else pointsInBack.push_back(triangle.a);
-	if (plane.isInFrontStrict(triangle.b)) pointsInFront.push_back(triangle.b); else pointsInBack.push_back(triangle.b);
-	if (plane.isInFrontStrict(triangle.c)) pointsInFront.push_back(triangle.c); else pointsInBack.push_back(triangle.c);
+	if (plane.isInFrontOrInside(triangle.a)) pointsInFront.push_back(triangle.a); else pointsInBack.push_back(triangle.a);
+	if (plane.isInFrontOrInside(triangle.b)) pointsInFront.push_back(triangle.b); else pointsInBack.push_back(triangle.b);
+	if (plane.isInFrontOrInside(triangle.c)) pointsInFront.push_back(triangle.c); else pointsInBack.push_back(triangle.c);
 
 	if (pointsInFront.empty())
 		return {};

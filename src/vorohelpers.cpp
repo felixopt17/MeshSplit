@@ -16,6 +16,21 @@ glm::vec3 Face::getNormal() const
 	return glm::normalize(glm::cross(directions[0], directions[1]));
 }
 
+std::vector<Triangle> Face::triangulate() const
+{
+	if (vertices.size() < 3)
+		return {};
+
+	std::vector<Triangle> result;
+
+	for (uint32_t i = 2; i < static_cast<uint32_t>(vertices.size()); i++)
+	{
+		result.emplace_back(vertices[0], vertices[i - 1], vertices[i]);
+	}
+
+	return result;
+}
+
 std::array<glm::vec3, 2> Face::getDirectionVectors() const
 {
 	assert(vertices.size() >= 3);
