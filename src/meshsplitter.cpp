@@ -29,19 +29,16 @@ vector<TriMesh> splitMesh(const TriMesh& sourceMesh, const std::vector<Cell>& ce
 		const Cell& cell = cells[i];
 		setTitleMessage("Splitting with cell " + std::to_string(i) + "/" + std::to_string(cells.size()));
 
-		
+		TriMesh intersectionMesh;
 		if (cellIntersectsMesh(sourceMesh, cell))
 		{
-			TriMesh intersectionMesh;
-
-
 			if(intersectMesh(sourceMesh, cell, intersectionMesh))
 			{
 				intersectionMesh.recalculateNormals();
-				result.emplace_back(std::move(intersectionMesh));
+				
 			}
 		}
-
+		result.emplace_back(std::move(intersectionMesh));
 
 	}
 
@@ -306,7 +303,7 @@ void removeBrokenSegments(vector<OrientedLineSegment>& segments, const Face& fac
 	Plane facePlane(face);
 	const vec3 faceNormal = face.getNormal();
 
-	const vec3 faceCenter = std::accumulate(face.vertices.begin(), face.vertices.end(), vec3(0))/static_cast<float>(face.vertices.size());
+	const vec3 faceCenter = std::accumulate(face.vertices.begin(), face.vertices.end(), vec3(0)) / static_cast<float>(face.vertices.size());
 
 	for (size_t i = 0; i < segments.size();)
 	{

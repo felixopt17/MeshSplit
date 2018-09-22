@@ -11,6 +11,29 @@
 
 #ifndef _TEST_
 
+/// Scale mesh to fit into a uniform cube
+void scaleMesh(TriMesh& original)
+{
+	glm::vec3 maxPos(0);
+
+
+	glm::vec3* positions = original.getPositions<3>();
+
+	const auto vertCount = original.getNumVertices();
+	for (size_t i = 0; i < vertCount; i++)
+	{
+		maxPos.x = std::max(maxPos.x, positions[i].x);
+		maxPos.y = std::max(maxPos.y, positions[i].y);
+		maxPos.z = std::max(maxPos.z, positions[i].z);
+	}
+
+	const float scale = 1 / std::max(maxPos.x, std::max(maxPos.y, maxPos.z));
+
+	for (size_t i = 0; i < vertCount; i++)
+	{
+		positions[i] *= scale;
+	}
+}
 
 using namespace ci;
 using namespace ci::app;
@@ -28,7 +51,6 @@ public:
 	void draw() override;
 	void keyDown(KeyEvent event) override;
 
-	void draw3DLine(Camera& cam, vec3 a, vec3 b);
 	void drawFaceLines(Camera& cam);
 private:
 	TriMesh mesh;
@@ -39,6 +61,7 @@ private:
 
 	std::vector<std::vector<Face>> cells;
 	std::vector<TriMesh> meshParts;
+	std::vector<vec3> particlePositions;
 	static const int MAX_SIZE = 2;
 
 	int currentPart = 0;
@@ -58,11 +81,11 @@ void MeshSplitApp::generateVoronoiCells()
 {
 	getWindow()->setTitle("Generating voronoi cells");
 
-	const auto particleCount = 40;
+	const auto particleCount = 60;
 	uniform_real_distribution<double> posDist(-MAX_SIZE, MAX_SIZE);
-	for(int particleID=0;particleID<particleCount;particleID++)
+	for (int particleID = 0; particleID < particleCount; particleID++)
 	{
-		con.put(particleID++, posDist(re), posDist(re),posDist(re));
+		con.put(particleID++, posDist(re), posDist(re), posDist(re));
 	}
 
 
@@ -83,28 +106,25 @@ void MeshSplitApp::generateVoronoiCells()
 			const glm::vec3 particlePos(px, py, pz);
 
 			cells.emplace_back(getFacesFromEdges(vcell, particlePos));
+			particlePositions.emplace_back(particlePos);
 		}
 
 	} while (vLoop.inc());
-
-	//TODO remove:
-	con.draw_particles("D:\\voroPoints_p.gnu");
-	con.draw_cells_gnuplot("D:\\voroCells_v.gnu");
 
 	getWindow()->setTitle("Cell faces generated");
 }
 
 void MeshSplitApp::setup()
 {
+	cells.clear();
+	meshParts.clear();
+	particlePositions.clear();
+
 	mesh = geom::Cube();
+	scaleMesh(mesh);
 	generateVoronoiCells();
 
 	meshParts = splitMesh(mesh, cells);
-	//meshParts = testSplit(mesh);
-	/*for(auto& cell: cells)
-	{
-		meshParts.push_back(meshFromFaces(cell));
-	}*/
 }
 
 void MeshSplitApp::mouseDown(MouseEvent event)
@@ -112,22 +132,9 @@ void MeshSplitApp::mouseDown(MouseEvent event)
 }
 
 
-void MeshSplitApp::draw3DLine(Camera& cam, vec3 a, vec3 b)
-{
-	const auto screenA = cam.worldToScreen(a, getWindowWidth(), getWindowHeight());
-	const auto screenB = cam.worldToScreen(b, getWindowWidth(), getWindowHeight());
-	ci::gl::drawLine(screenA, screenB);
-}
 
 void MeshSplitApp::drawFaceLines(Camera& cam)
 {
-	/*auto& faces = cells[currentPart%meshParts.size()];
-
-	auto& face = faces[currentFace%faces.size()];
-	for(size_t i=1; i<=face.vertices.size();i++)
-	{
-		draw3DLine(cam, face.vertices[i - 1], face.vertices[i%face.vertices.size()]);
-	}*/
 	gl::draw(faceMesh);
 }
 
@@ -145,44 +152,46 @@ void MeshSplitApp::draw()
 	gl::clear(Color(0.5, 0.5, 0.5));
 	gl::enableFaceCulling(true);
 
-	gl::lineWidth(3);
+	gl::lineWidth(1);
 
 	CameraPersp cam;
-	cam.lookAt(vec3(2, 2, 2), vec3(0));
+	cam.lookAt(vec3(4, 4, 4), vec3(0));
 	gl::setMatrices(cam);
 
 	const auto lambert = gl::ShaderDef().lambert();
 	const auto shader = gl::getStockShader(lambert);
 	shader->bind();
 
-	gl::lineWidth(1);
-
-	//gl::drawSphere(vec3(), 1.0f, 40);
+	float offsetScale = static_cast<float>(fmod(getElapsedSeconds(), 3)) - 1.0f;
+	offsetScale = std::max(offsetScale, 0.f);
 
 	gl::pushModelMatrix();
 	//gl::scale(2, 2, 2);
 	gl::rotate(static_cast<float>(3.1415*2.0*getElapsedSeconds() / 8), vec3(0, 1, 0));
 	//gl::draw(mesh);
 
-	for (size_t i=0;i<meshParts.size();i++)
+	for (size_t i = 0; i < meshParts.size(); i++)
 	{
+		gl::pushModelMatrix();
+
+		gl::translate(particlePositions[i] * offsetScale);
 		const auto& part = meshParts[i];
-		if(i==currentPart%meshParts.size())
+		if (i == currentPart % meshParts.size())
 		{
 			const bool oldState = gl::isWireframeEnabled();
-			if(!oldState)
+			if (!oldState)
 				gl::enableWireframe();
 			gl::draw(part);
-			if(!oldState)
+			if (!oldState)
 				gl::disableWireframe();
 		}
 		else
 		{
 			gl::draw(part);
 		}
-		
+		gl::popModelMatrix();
 	}
-	
+
 
 	if (drawFace)
 		drawFaceLines(cam);
@@ -229,6 +238,12 @@ void MeshSplitApp::keyDown(KeyEvent event)
 			gl::disableWireframe();
 
 		wireframe = !wireframe;
+	}
+
+	if (event.getChar() == 'r')
+	{
+		re.seed(getElapsedFrames());
+		setup();
 	}
 }
 
