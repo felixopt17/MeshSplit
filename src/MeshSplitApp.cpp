@@ -39,7 +39,7 @@ private:
 
 	std::vector<std::vector<Face>> cells;
 	std::vector<TriMesh> meshParts;
-	static const int MAX_SIZE = 5;
+	static const int MAX_SIZE = 2;
 
 	int currentPart = 0;
 	int currentFace = 0;
@@ -48,7 +48,7 @@ private:
 
 };
 
-MeshSplitApp::MeshSplitApp() :con(-MAX_SIZE, MAX_SIZE, -MAX_SIZE, MAX_SIZE, -MAX_SIZE, MAX_SIZE, 1, 1, 1, false, false, false, 10)
+MeshSplitApp::MeshSplitApp() :con(-MAX_SIZE, MAX_SIZE, -MAX_SIZE, MAX_SIZE, -MAX_SIZE, MAX_SIZE, 5, 5, 5, false, false, false, 8)
 {
 
 }
@@ -58,17 +58,13 @@ void MeshSplitApp::generateVoronoiCells()
 {
 	getWindow()->setTitle("Generating voronoi cells");
 
-	const auto scale = 2;
-	uniform_real_distribution<double> offsetDist(-0.5, 0.5);
-	int particleID = 0;
-	for (int x = -scale; x <= scale; x++)
-		for (int y = -scale; y <= scale; y++)
-			for (int z = -scale; z <= scale; z++)
-			{
-				con.put(particleID++, (x + offsetDist(re)) / scale, (y + offsetDist(re)) / scale, (z + offsetDist(re)) / scale);
-			}
+	const auto particleCount = 40;
+	uniform_real_distribution<double> posDist(-MAX_SIZE, MAX_SIZE);
+	for(int particleID=0;particleID<particleCount;particleID++)
+	{
+		con.put(particleID++, posDist(re), posDist(re),posDist(re));
+	}
 
-	con.compute_all_cells();
 
 	getWindow()->setTitle("Voronoi cells generated");
 
@@ -84,12 +80,16 @@ void MeshSplitApp::generateVoronoiCells()
 		{
 			double px, py, pz;
 			vLoop.pos(px, py, pz);
-			glm::vec3 particlePos(px, py, pz);
+			const glm::vec3 particlePos(px, py, pz);
 
 			cells.emplace_back(getFacesFromEdges(vcell, particlePos));
 		}
 
 	} while (vLoop.inc());
+
+	//TODO remove:
+	con.draw_particles("D:\\voroPoints_p.gnu");
+	con.draw_cells_gnuplot("D:\\voroCells_v.gnu");
 
 	getWindow()->setTitle("Cell faces generated");
 }
@@ -101,6 +101,10 @@ void MeshSplitApp::setup()
 
 	meshParts = splitMesh(mesh, cells);
 	//meshParts = testSplit(mesh);
+	/*for(auto& cell: cells)
+	{
+		meshParts.push_back(meshFromFaces(cell));
+	}*/
 }
 
 void MeshSplitApp::mouseDown(MouseEvent event)
@@ -139,7 +143,7 @@ void MeshSplitApp::draw()
 {
 	gl::enableDepth(true);
 	gl::clear(Color(0.5, 0.5, 0.5));
-	gl::enableFaceCulling(false);
+	gl::enableFaceCulling(true);
 
 	gl::lineWidth(3);
 
@@ -158,7 +162,27 @@ void MeshSplitApp::draw()
 	gl::pushModelMatrix();
 	//gl::scale(2, 2, 2);
 	gl::rotate(static_cast<float>(3.1415*2.0*getElapsedSeconds() / 8), vec3(0, 1, 0));
-	gl::draw(mesh);
+	//gl::draw(mesh);
+
+	for (size_t i=0;i<meshParts.size();i++)
+	{
+		const auto& part = meshParts[i];
+		if(i==currentPart%meshParts.size())
+		{
+			const bool oldState = gl::isWireframeEnabled();
+			if(!oldState)
+				gl::enableWireframe();
+			gl::draw(part);
+			if(!oldState)
+				gl::disableWireframe();
+		}
+		else
+		{
+			gl::draw(part);
+		}
+		
+	}
+	
 
 	if (drawFace)
 		drawFaceLines(cam);

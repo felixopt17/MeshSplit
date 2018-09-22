@@ -29,13 +29,13 @@ vector<TriMesh> splitMesh(const TriMesh& sourceMesh, const std::vector<Cell>& ce
 		const Cell& cell = cells[i];
 		setTitleMessage("Splitting with cell " + std::to_string(i) + "/" + std::to_string(cells.size()));
 
-		// TODO uncomment
-		//if (cellIntersectsMesh(sourceMesh, cell))
+		
+		if (cellIntersectsMesh(sourceMesh, cell))
 		{
 			TriMesh intersectionMesh;
 
-			// TODO: make if
-			intersectMesh(sourceMesh, cell, intersectionMesh);
+
+			if(intersectMesh(sourceMesh, cell, intersectionMesh))
 			{
 				intersectionMesh.recalculateNormals();
 				result.emplace_back(std::move(intersectionMesh));
@@ -256,7 +256,7 @@ void removeShortSegments(vector<OrientedLineSegment>& segments)
 {
 	for (size_t i = 0; i < segments.size();)
 	{
-		if (segments[i].segment.getLength() < 0.001)
+		if (segments[i].segment.getLength() < 0.001f)
 		{
 			segments.erase(segments.begin() + i);
 		}
@@ -304,24 +304,39 @@ std::vector<vec3> findEdgesBetweenNewVerts(const size_t startVertIdx, const std:
 void removeBrokenSegments(vector<OrientedLineSegment>& segments, const Face& face)
 {
 	Plane facePlane(face);
+	const vec3 faceNormal = face.getNormal();
+
+	const vec3 faceCenter = std::accumulate(face.vertices.begin(), face.vertices.end(), vec3(0))/static_cast<float>(face.vertices.size());
+
 	for (size_t i = 0; i < segments.size();)
 	{
 		const auto& segment = segments[i];
 
-		bool isSegmentOnPlane = std::max(facePlane.pointDistance(segment.segment.getStart()),
+		const bool isSegmentOnPlane = std::max(facePlane.pointDistance(segment.segment.getStart()),
 			facePlane.pointDistance(segment.segment.getEnd())) < 0.001f;
 		// Test segment for each face edge
-		float closestEdgeDist = std::numeric_limits<float>::max();
-		for(size_t j=0;j<face.vertices.size();j++)
+		float closestStartDist = std::numeric_limits<float>::max();
+		for (size_t j = 0; j < face.vertices.size(); j++)
 		{
 			const size_t nextIdx = (j + 1) % face.vertices.size();
-
-			//TODO check plane dist
+			const vec3 edgeDir = face.vertices[nextIdx] - face.vertices[j];
+			Plane edgePlane(face.vertices[j], face.vertices[nextIdx], face.vertices[j] + faceNormal);
+			closestStartDist = std::min(edgePlane.pointDistance(segment.segment.getStart()), closestStartDist);
 		}
 
+		float closestEndDist = std::numeric_limits<float>::max();
+		for (size_t j = 0; j < face.vertices.size(); j++)
+		{
+			const size_t nextIdx = (j + 1) % face.vertices.size();
+			const vec3 edgeDir = face.vertices[nextIdx] - face.vertices[j];
+			Plane edgePlane(face.vertices[j], face.vertices[nextIdx], face.vertices[j] + faceNormal);
+			closestEndDist = std::min(edgePlane.pointDistance(segment.segment.getEnd()), closestEndDist);
+		}
 
+		const bool bothVerticesOnEdge = closestStartDist <= EPSILON_SCALE * glm::epsilon<float>() &&
+			closestEndDist <= EPSILON_SCALE * glm::epsilon<float>();
 
-		if (segments[i].segment.getLength() < 0.001)
+		if (!bothVerticesOnEdge || !isSegmentOnPlane)
 		{
 			segments.erase(segments.begin() + i);
 		}
@@ -359,7 +374,7 @@ std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& s
 
 	gbrSegments = geogebraExport(filteredSegments);
 
-	//removeShortSegments(filteredSegments);
+	removeShortSegments(filteredSegments);
 
 	//removeBrokenSegments(filteredSegments, face);
 
@@ -499,8 +514,6 @@ bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMes
 	}
 
 	// If face has no intersections and its vertices are used by other faces fill the whole face
-	// TODO
-	/*/
 	for (auto& face : emptyFaces)
 	{
 		if (usedVertices.find(face.vertices[0]) != usedVertices.end())
@@ -510,7 +523,7 @@ bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMes
 			auto faceTris = face.triangulate();
 			capTriangles.insert(capTriangles.end(), faceTris.begin(), faceTris.end());
 		}
-	}*/
+	}
 
 
 	// Add resulting triangles to mesh

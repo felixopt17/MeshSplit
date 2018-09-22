@@ -115,12 +115,14 @@ std::vector<Face> getFacesFromEdges(voro::voronoicell& cell, const glm::vec3& pa
 	std::vector<int> vertexOrders;
 	cell.vertex_orders(vertexOrders);
 
+	std::vector<double> globalParticlePositions;
+	cell.vertices(particlePos.x, particlePos.y, particlePos.z, globalParticlePositions);
 
 	const auto vertToPoint = [&](int vertex) {
 		return glm::vec3(
-			static_cast<float>(cell.pts[3 * vertex]),
-			static_cast<float>(cell.pts[3 * vertex + 1]),
-			static_cast<float>(cell.pts[3 * vertex + 2]));
+			static_cast<float>(globalParticlePositions[3 * vertex]),
+			static_cast<float>(globalParticlePositions[3 * vertex + 1]),
+			static_cast<float>(globalParticlePositions[3 * vertex + 2]));
 	};
 
 	std::set<std::set<int>> faceSets;
@@ -173,8 +175,7 @@ std::vector<Face> getFacesFromEdges(voro::voronoicell& cell, const glm::vec3& pa
 	}
 
 
-
-
+	
 	glm::vec3 centerPoint(0.f, 0.f, 0.f);
 	for (int i = 0; i < cell.p; i++)
 		centerPoint += vertToPoint(i);
@@ -187,11 +188,11 @@ std::vector<Face> getFacesFromEdges(voro::voronoicell& cell, const glm::vec3& pa
 		Face face;
 		for (const int vert : faceSet)
 		{
-			face.vertices.push_back(vertToPoint(vert)+particlePos);
+			face.vertices.push_back(vertToPoint(vert));
 		}
 
 		auto normal = face.getNormal();
-		if(glm::dot(normal, centerPoint - (face.vertices[0]-particlePos)) < 0)
+		if(glm::dot(normal, centerPoint - (face.vertices[0])) < 0)
 		{
 			normal = -normal; //make normal face inward
 		}
