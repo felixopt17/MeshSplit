@@ -494,15 +494,13 @@ bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMes
 			newTriangles.insert(std::end(newTriangles), std::begin(splitResult), std::end(splitResult));
 		}
 
-
 		std::vector<std::string> gbrSegments = geogebraExport(splitSegments);
 
 
 		auto capResult = createCap(splitSegments, face, usedVertices);
-
 		capTriangles.insert(std::end(capTriangles), std::begin(capResult), std::end(capResult));
 
-		if (triangles.empty())
+		if (capResult.empty())
 		{
 			emptyFaces.push_back(face);
 		}
@@ -511,16 +509,20 @@ bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMes
 	}
 
 	// If face has no intersections and its vertices are used by other faces fill the whole face
-	for (auto& face : emptyFaces)
+	if(!usedVertices.empty())
 	{
-		if (usedVertices.find(face.vertices[0]) != usedVertices.end())
+		for (auto& face : emptyFaces)
 		{
-			//assume the rest are used aswell
-			face.orient(-face.getNormal()); //Orient in CCW order from the outside
-			auto faceTris = face.triangulate();
-			capTriangles.insert(capTriangles.end(), faceTris.begin(), faceTris.end());
+			if (usedVertices.find(face.vertices[0]) != usedVertices.end())
+			{
+				//assume the rest are used aswell
+				face.orient(-face.getNormal()); //Orient in CCW order from the outside
+				auto faceTris = face.triangulate();
+				capTriangles.insert(capTriangles.end(), faceTris.begin(), faceTris.end());
+			}
 		}
 	}
+	
 
 
 	// Add resulting triangles to mesh

@@ -149,7 +149,7 @@ void MeshSplitApp::update()
 void MeshSplitApp::draw()
 {
 	gl::enableDepth(true);
-	gl::clear(Color(0.5, 0.5, 0.5));
+	gl::clear(Color(0.3f, 1.0f, 0.3f));
 	gl::enableFaceCulling(true);
 
 	gl::lineWidth(1);
