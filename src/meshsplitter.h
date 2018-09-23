@@ -38,8 +38,10 @@ std::vector<Triangle> getTriangles(const TriMesh& mesh);
 
 std::vector<cinder::TriMesh> testSplit(const class TriMesh& mesh);
 
-/// Attempt to create a cap for the holecut by segments
-std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& splitSegments, const Face& face, std::unordered_set<glm::vec3>& usedVertices);
+/// Attempt to create a cap for the holecut by segments. Vertices used as a part of the cap fill are stored in a set.
+std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& splitSegments, const Face& face, std::unordered_set<glm::vec3>& globalInnerFillVerts);
 
 
 std::vector<std::string> geogebraExport(const std::vector<OrientedLineSegment>& segments);
+
+void addTrianglesToMesh(const std::vector<Triangle>& triangles, TriMesh& mesh);

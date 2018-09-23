@@ -344,7 +344,7 @@ void removeBrokenSegments(vector<OrientedLineSegment>& segments, const Face& fac
 	}
 }
 
-std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& splitSegments, const Face& face, std::unordered_set<glm::vec3>& globalUsedVerts)
+std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& splitSegments, const Face& face, std::unordered_set<glm::vec3>& globalInnerFillVerts)
 {
 	const vec3 faceNormal = face.getNormal();
 	std::vector<Triangle> triangles;
@@ -415,13 +415,13 @@ std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& s
 		{
 			const size_t startIdx = intersectionStartVert - allEdgeVerts.vertices.begin();
 			std::vector<vec3> pointsToAdd = findEdgesBetweenNewVerts(startIdx, allEdgeVerts.vertices, newFaceVerts, bannedVerts, goClockwise);
-			globalUsedVerts.insert(pointsToAdd[0]);
+			globalInnerFillVerts.insert(pointsToAdd[0]);
 			for (size_t i = 1; i < pointsToAdd.size(); i++)
 			{
 				OrientedLineSegment newSegment(pointsToAdd[i - 1], pointsToAdd[i], centerPoint - pointsToAdd[i]);
 				newSegment.fixInsideDir(faceNormal);
 				segmentsToAdd.emplace_back(newSegment);
-				globalUsedVerts.insert(pointsToAdd[i]);
+				globalInnerFillVerts.insert(pointsToAdd[i]);
 			}
 		}
 
@@ -429,13 +429,13 @@ std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& s
 		{
 			const size_t startIdx = intersectionEndVert - allEdgeVerts.vertices.begin();
 			std::vector<vec3> pointsToAdd = findEdgesBetweenNewVerts(startIdx, allEdgeVerts.vertices, newFaceVerts, bannedVerts, !goClockwise);
-			globalUsedVerts.insert(pointsToAdd[0]);
+			globalInnerFillVerts.insert(pointsToAdd[0]);
 			for (size_t i = 1; i < pointsToAdd.size(); i++)
 			{
 				OrientedLineSegment newSegment(pointsToAdd[i - 1], pointsToAdd[i], centerPoint - pointsToAdd[i]);
 				newSegment.fixInsideDir(faceNormal);
 				segmentsToAdd.emplace_back(newSegment);
-				globalUsedVerts.insert(pointsToAdd[i]);
+				globalInnerFillVerts.insert(pointsToAdd[i]);
 			}
 		}
 
@@ -445,13 +445,6 @@ std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& s
 	{
 		tryMergeSegments(s, filteredSegments, triangles, face);
 	}
-
-	if (!filteredSegments.empty())
-	{
-		//assert(filteredSegments.empty());
-		1 + 1;
-	}
-
 
 	return triangles;
 }
@@ -468,6 +461,59 @@ std::vector<std::string> geogebraExport(const std::vector<OrientedLineSegment>& 
 	return gbrSegments;
 }
 
+void addTrianglesToMesh(const std::vector<Triangle>& triangles, TriMesh& mesh)
+{
+	for (const Triangle& tri : triangles)
+	{
+		const auto vCount = static_cast<uint32_t>(mesh.getNumVertices());
+
+		mesh.appendPosition(tri.a);
+		mesh.appendPosition(tri.b);
+		mesh.appendPosition(tri.c);
+
+		mesh.appendTriangle(vCount, vCount + 1, vCount + 2);
+	}
+}
+
+/// Fill all faces that are inside the mesh but have no intersections
+void fillInsideFaces(std::vector<Triangle>& capTriangles, std::unordered_set<glm::vec3>& globalInnerFillVerts, std::vector<Face>& emptyFaces)
+{
+	if(!globalInnerFillVerts.empty())
+	{
+		std::vector<Face> remainingEmpty;
+		bool bFilledFace = false;
+		do
+		{
+			bFilledFace = false;
+
+			for (auto& face : emptyFaces)
+			{
+				// Any of its vertices used in a fill?
+				if (std::any_of(face.vertices.begin(), face.vertices.end(), [&](const auto& v) {return globalInnerFillVerts.find(v) != globalInnerFillVerts.end(); }))
+				{
+					face.orient(-face.getNormal()); //Orient in CCW order from the outside
+					auto faceTris = face.triangulate();
+					capTriangles.insert(capTriangles.end(), faceTris.begin(), faceTris.end());
+
+					// Mark all other vertices as filled
+					for (const vec3& v : face.vertices)
+						globalInnerFillVerts.insert(v);
+
+					bFilledFace = true;
+				}
+				else
+				{
+					remainingEmpty.emplace_back(face);
+				}
+			}
+
+			swap(remainingEmpty, emptyFaces);
+			remainingEmpty.clear();
+		} while (bFilledFace);
+		
+	}
+}
+
 bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMesh& outMesh)
 {
 	/*
@@ -477,7 +523,7 @@ bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMes
 
 	auto triangles = getTriangles(source);
 	std::vector<Triangle> capTriangles;
-	std::unordered_set<glm::vec3> usedVertices; //face vertices that are part of the mesh
+	std::unordered_set<glm::vec3> globalInnerFillVerts; //face vertices that are part of the cap fill
 
 	std::vector<Face> emptyFaces;
 	for (int i = 0; i < faces.size(); i++)
@@ -497,7 +543,7 @@ bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMes
 		std::vector<std::string> gbrSegments = geogebraExport(splitSegments);
 
 
-		auto capResult = createCap(splitSegments, face, usedVertices);
+		auto capResult = createCap(splitSegments, face, globalInnerFillVerts);
 		capTriangles.insert(std::end(capTriangles), std::begin(capResult), std::end(capResult));
 
 		if (capResult.empty())
@@ -508,44 +554,12 @@ bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMes
 		std::swap(triangles, newTriangles);
 	}
 
-	// If face has no intersections and its vertices are used by other faces fill the whole face
-	if(!usedVertices.empty())
-	{
-		for (auto& face : emptyFaces)
-		{
-			if (usedVertices.find(face.vertices[0]) != usedVertices.end())
-			{
-				//assume the rest are used aswell
-				face.orient(-face.getNormal()); //Orient in CCW order from the outside
-				auto faceTris = face.triangulate();
-				capTriangles.insert(capTriangles.end(), faceTris.begin(), faceTris.end());
-			}
-		}
-	}
+	
+	fillInsideFaces(capTriangles, globalInnerFillVerts, emptyFaces);
 	
 
-
-	// Add resulting triangles to mesh
-	for (const Triangle& tri : triangles)
-	{
-		const auto vCount = static_cast<uint32_t>(outMesh.getNumVertices());
-
-		outMesh.appendPosition(tri.a);
-		outMesh.appendPosition(tri.b);
-		outMesh.appendPosition(tri.c);
-
-		outMesh.appendTriangle(vCount, vCount + 1, vCount + 2);
-	}
-	for (const Triangle& tri : capTriangles)
-	{
-		const auto vCount = static_cast<uint32_t>(outMesh.getNumVertices());
-
-		outMesh.appendPosition(tri.a);
-		outMesh.appendPosition(tri.b);
-		outMesh.appendPosition(tri.c);
-
-		outMesh.appendTriangle(vCount, vCount + 1, vCount + 2);
-	}
+	addTrianglesToMesh(triangles, outMesh);
+	addTrianglesToMesh(capTriangles, outMesh);
 
 	return !triangles.empty();
 }
