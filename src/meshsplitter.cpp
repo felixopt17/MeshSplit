@@ -373,7 +373,7 @@ std::vector<Triangle> createCap(const std::vector<struct OrientedLineSegment>& s
 
 	removeShortSegments(filteredSegments);
 
-	//removeBrokenSegments(filteredSegments, face);
+	removeBrokenSegments(filteredSegments, face);
 
 	// Segments that did not get merged or triangulized must intersect the face edge at both points
 	std::unordered_set<vec3> newFaceVerts;
@@ -478,7 +478,7 @@ void addTrianglesToMesh(const std::vector<Triangle>& triangles, TriMesh& mesh)
 /// Fill all faces that are inside the mesh but have no intersections
 void fillInsideFaces(std::vector<Triangle>& capTriangles, std::unordered_set<glm::vec3>& globalInnerFillVerts, std::vector<Face>& emptyFaces)
 {
-	if(!globalInnerFillVerts.empty())
+	if (!globalInnerFillVerts.empty())
 	{
 		std::vector<Face> remainingEmpty;
 		bool bFilledFace = false;
@@ -510,7 +510,7 @@ void fillInsideFaces(std::vector<Triangle>& capTriangles, std::unordered_set<glm
 			swap(remainingEmpty, emptyFaces);
 			remainingEmpty.clear();
 		} while (bFilledFace);
-		
+
 	}
 }
 
@@ -554,8 +554,10 @@ bool intersectMesh(const TriMesh& source, const std::vector<Face>& faces, TriMes
 		std::swap(triangles, newTriangles);
 	}
 
-	
-	fillInsideFaces(capTriangles, globalInnerFillVerts, emptyFaces);
+	if(!triangles.empty())
+	{
+		fillInsideFaces(capTriangles, globalInnerFillVerts, emptyFaces);
+	}
 	
 
 	addTrianglesToMesh(triangles, outMesh);

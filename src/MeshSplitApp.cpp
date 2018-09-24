@@ -2,6 +2,7 @@
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
 #include "cinder/gl/Shader.h"
+#include "cinder/ObjLoader.h"
 
 
 #include "voro++.hh"
@@ -39,7 +40,7 @@ using namespace ci;
 using namespace ci::app;
 using namespace std;
 
-std::default_random_engine re;
+std::default_random_engine re(0);
 
 class MeshSplitApp : public App {
 public:
@@ -50,14 +51,21 @@ public:
 	void update() override;
 	void draw() override;
 	void keyDown(KeyEvent event) override;
-
+	void prepareSplit();
 	void drawFaceLines(Camera& cam);
+
+	void fileDrop(FileDropEvent event) override;
+
+	/// Save splitted parts of the mesh
+	void saveSplits();
 private:
 	TriMesh mesh;
+	TriMesh originalMesh;
 	TriMesh faceMesh;
 	voro::container con;
 
 	bool drawFace = false;
+	bool wireframe = false;
 
 	std::vector<std::vector<Face>> cells;
 	std::vector<TriMesh> meshParts;
@@ -116,15 +124,8 @@ void MeshSplitApp::generateVoronoiCells()
 
 void MeshSplitApp::setup()
 {
-	cells.clear();
-	meshParts.clear();
-	particlePositions.clear();
-
-	mesh = geom::Cube();
-	scaleMesh(mesh);
-	generateVoronoiCells();
-
-	meshParts = splitMesh(mesh, cells);
+	originalMesh = geom::Cube();
+	prepareSplit();
 }
 
 void MeshSplitApp::mouseDown(MouseEvent event)
@@ -136,6 +137,37 @@ void MeshSplitApp::mouseDown(MouseEvent event)
 void MeshSplitApp::drawFaceLines(Camera& cam)
 {
 	gl::draw(faceMesh);
+}
+
+void MeshSplitApp::fileDrop(FileDropEvent event)
+{
+	if (event.getNumFiles() < 1)
+		return;
+
+	ObjLoader loader(loadFile(event.getFile(0)));
+	originalMesh = TriMesh(loader);
+	prepareSplit();
+}
+
+void MeshSplitApp::saveSplits()
+{
+	fs::path saveDir = fs::current_path() / "out";
+
+	if (!fs::exists(saveDir))
+	{
+		fs::create_directory(saveDir);
+	}
+
+	int partNum = 0;
+	for (auto& m : meshParts)
+	{
+		if (m.getNumVertices() > 0)
+		{
+			fs::path outFile = saveDir / std::to_string(partNum++).append(".obj");
+			ci::writeObj(writeFile(outFile), m);
+		}
+	}
+
 }
 
 void MeshSplitApp::update()
@@ -176,19 +208,9 @@ void MeshSplitApp::draw()
 
 		gl::translate(particlePositions[i] * offsetScale);
 		const auto& part = meshParts[i];
-		if (i == currentPart % meshParts.size())
-		{
-			const bool oldState = gl::isWireframeEnabled();
-			if (!oldState)
-				gl::enableWireframe();
-			gl::draw(part);
-			if (!oldState)
-				gl::disableWireframe();
-		}
-		else
-		{
-			gl::draw(part);
-		}
+
+		gl::draw(part);
+
 		gl::popModelMatrix();
 	}
 
@@ -231,7 +253,6 @@ void MeshSplitApp::keyDown(KeyEvent event)
 
 	if (event.getChar() == 'w')
 	{
-		static bool wireframe;
 		if (wireframe)
 			gl::enableWireframe();
 		else
@@ -243,10 +264,45 @@ void MeshSplitApp::keyDown(KeyEvent event)
 	if (event.getChar() == 'r')
 	{
 		re.seed(getElapsedFrames());
-		setup();
+		prepareSplit();
+	}
+
+	if (event.getChar() == '1')
+	{
+		originalMesh = geom::Cube();
+		prepareSplit();
+	}
+
+	if (event.getChar() == '2')
+	{
+		originalMesh = geom::Cylinder();
+		prepareSplit();
+	}
+
+	if (event.getChar() == '3')
+	{
+		originalMesh = geom::Sphere();
+		prepareSplit();
+	}
+
+	if (event.getChar() == 'o')
+	{
+		saveSplits();
 	}
 }
 
+void MeshSplitApp::prepareSplit()
+{
+	cells.clear();
+	meshParts.clear();
+	particlePositions.clear();
+	mesh = originalMesh;
+	scaleMesh(mesh);
+	con.clear();
+	generateVoronoiCells();
+
+	meshParts = splitMesh(mesh, cells);
+}
 
 
 CINDER_APP(MeshSplitApp, RendererGl)
