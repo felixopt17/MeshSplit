@@ -62,4 +62,9 @@ Jednotlivé střepy jsou tvořeny průnikem původního modelu s buňkami 3D Vor
     
     
     [Download](https://github.com/Fro-Z/MeshSplit/files/2410353/MeshSplit.zip)
+    
+    #### Použité knihovny
+    [Voro++](http://math.lbl.gov/voro++/) C++ knihovna pro voronoi diagramy
+    
+    [Cinder](https://libcinder.org/docs/index.html) Framework pro grafické zobrazení
       
